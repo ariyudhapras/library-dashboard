@@ -413,6 +413,33 @@ export default function KatalogPage() {
                         onSelect={handleDateSelect}
                         disabled={(date) => date < today}
                         initialFocus
+                        classNames={{
+                          months: "space-y-4",
+                          month: "space-y-4",
+                          caption: "flex justify-center pt-1 relative items-center",
+                          caption_label: "text-sm font-medium",
+                          nav: "space-x-1 flex items-center",
+                          nav_button: "h-7 w-7 bg-transparent p-0 opacity-50 hover:opacity-100",
+                          nav_button_previous: "absolute left-1",
+                          nav_button_next: "absolute right-1",
+                          table: "w-full border-collapse",
+                          head_row: "flex",
+                          head_cell: "text-slate-500 rounded-md w-9 font-normal text-[0.8rem] text-center",
+                          row: "flex w-full mt-2",
+                          cell: "text-center text-sm relative p-0 focus-within:relative focus-within:z-20",
+                          day: cn(
+                            "h-9 w-9 p-0 font-normal aria-selected:bg-blue-600 aria-selected:text-white aria-selected:hover:bg-blue-600",
+                            "hover:bg-slate-100 rounded-md",
+                            "focus:bg-slate-100 focus:ring-2 focus:ring-slate-400 focus:ring-offset-2 focus:ring-offset-white",
+                            "disabled:opacity-50 disabled:hover:bg-transparent disabled:cursor-not-allowed"
+                          ),
+                          day_selected: "bg-blue-600 text-white hover:bg-blue-600 hover:text-white focus:bg-blue-600 focus:text-white",
+                          day_today: "bg-slate-100",
+                          day_outside: "opacity-50",
+                          day_disabled: "opacity-50",
+                          day_range_middle: "aria-selected:bg-slate-100",
+                          day_hidden: "invisible",
+                        }}
                       />
                     </PopoverContent>
                   </Popover>
