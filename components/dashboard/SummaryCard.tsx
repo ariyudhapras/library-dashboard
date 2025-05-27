@@ -1,5 +1,5 @@
-import { Card, CardContent } from "@/components/ui/card"
 import { LucideIcon } from "lucide-react"
+import { cn } from "@/lib/design-tokens"
 import { Skeleton } from "@/components/ui/skeleton"
 
 interface SummaryCardProps {
@@ -22,43 +22,52 @@ export function SummaryCard({
   description,
   trend,
   loading = false,
-  colorClass = "text-blue-600 bg-blue-100 dark:bg-blue-950 dark:text-blue-400"
+  colorClass = "text-accent-600 bg-accent-50 dark:bg-accent-950 dark:text-accent-400"
 }: SummaryCardProps) {
   return (
-    <Card className="overflow-hidden">
-      <CardContent className="p-0">
-        <div className="flex items-start p-6">
-          <div className="flex-1">
-            <p className="text-sm font-medium text-muted-foreground">{title}</p>
+    <div className="rounded-lg bg-white dark:bg-primary-800 shadow-sm border border-primary-100 dark:border-primary-700 overflow-hidden">
+      <div className="p-6">
+        <div className="flex items-start justify-between">
+          <div className="space-y-1">
+            <p className="text-sm font-medium text-primary-600 dark:text-primary-400">
+              {title}
+            </p>
             {loading ? (
-              <Skeleton className="mt-2 h-7 w-16" />
+              <Skeleton className="h-8 w-24" />
             ) : (
-              <h3 className="mt-2 text-2xl font-bold tracking-tight">
-                {value === null ? "Tidak ada data" : value.toLocaleString()}
+              <h3 className="text-2xl font-semibold tracking-tight text-primary-900 dark:text-primary-50">
+                {value === null ? "—" : value.toLocaleString()}
               </h3>
             )}
             {description && (
-              <p className="mt-1 text-xs text-muted-foreground">{description}</p>
+              <p className="text-xs text-primary-500 dark:text-primary-400">
+                {description}
+              </p>
             )}
             {trend && !loading && (
-              <div className="mt-1 flex items-center text-xs">
+              <div className="flex items-center text-xs">
                 <span
-                  className={
-                    trend.isPositive ? "text-green-600" : "text-red-600"
-                  }
+                  className={cn(
+                    "font-medium",
+                    trend.isPositive
+                      ? "text-success-600 dark:text-success-400"
+                      : "text-error-600 dark:text-error-400"
+                  )}
                 >
-                  {trend.isPositive ? "+" : "-"}
-                  {trend.value}%
+                  {trend.isPositive ? "+" : "−"}
+                  {Math.abs(trend.value)}%
                 </span>
-                <span className="ml-1 text-muted-foreground">dari bulan lalu</span>
+                <span className="ml-1 text-primary-500 dark:text-primary-400">
+                  from last month
+                </span>
               </div>
             )}
           </div>
-          <div className={`rounded-full p-2 ${colorClass}`}>
+          <div className={cn("rounded-full p-2", colorClass)}>
             <Icon className="h-5 w-5" />
           </div>
         </div>
-      </CardContent>
-    </Card>
+      </div>
+    </div>
   )
 } 

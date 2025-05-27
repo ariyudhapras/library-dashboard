@@ -1,59 +1,74 @@
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
 import Link from "next/link"
 import { BookPlus, Clock, FileText, LayoutList, Users, Library } from "lucide-react"
+import { Button } from "@/components/ui/button"
+import { cn } from "@/lib/design-tokens"
+
+const actions = [
+  {
+    title: "Add Book",
+    href: "/admin/books/add",
+    icon: BookPlus,
+    description: "Add a new book to the library catalog",
+  },
+  {
+    title: "Loan Requests",
+    href: "/admin/requests",
+    icon: Clock,
+    description: "View and manage loan requests",
+  },
+  {
+    title: "Book Catalog",
+    href: "/admin/books",
+    icon: Library,
+    description: "Browse and manage book catalog",
+  },
+  {
+    title: "Members",
+    href: "/admin/members",
+    icon: Users,
+    description: "Manage library members",
+  },
+  {
+    title: "Returns",
+    href: "/admin/returns",
+    icon: FileText,
+    description: "Process book returns",
+  },
+  {
+    title: "Reports",
+    href: "/admin/reports",
+    icon: LayoutList,
+    description: "View library reports and statistics",
+  },
+]
 
 export function QuickActions() {
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Aksi Cepat</CardTitle>
-      </CardHeader>
-      <CardContent>
-        <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
-          <Button asChild variant="outline" className="h-auto flex-col gap-2 p-4">
-            <Link href="/admin/books/add">
-              <BookPlus className="h-5 w-5" />
-              <span className="mt-1 text-xs">Tambah Buku</span>
-            </Link>
-          </Button>
-          
-          <Button asChild variant="outline" className="h-auto flex-col gap-2 p-4">
-            <Link href="/admin/requests">
-              <Clock className="h-5 w-5" />
-              <span className="mt-1 text-xs">Permintaan Peminjaman</span>
-            </Link>
-          </Button>
-          
-          <Button asChild variant="outline" className="h-auto flex-col gap-2 p-4">
-            <Link href="/admin/books">
-              <Library className="h-5 w-5" />
-              <span className="mt-1 text-xs">Katalog Buku</span>
-            </Link>
-          </Button>
-          
-          <Button asChild variant="outline" className="h-auto flex-col gap-2 p-4">
-            <Link href="/admin/members">
-              <Users className="h-5 w-5" />
-              <span className="mt-1 text-xs">Kelola Anggota</span>
-            </Link>
-          </Button>
-          
-          <Button asChild variant="outline" className="h-auto flex-col gap-2 p-4">
-            <Link href="/admin/returns">
-              <FileText className="h-5 w-5" />
-              <span className="mt-1 text-xs">Pengembalian</span>
-            </Link>
-          </Button>
-          
-          <Button asChild variant="outline" className="h-auto flex-col gap-2 p-4">
-            <Link href="/admin/reports">
-              <LayoutList className="h-5 w-5" />
-              <span className="mt-1 text-xs">Laporan</span>
-            </Link>
-          </Button>
-        </div>
-      </CardContent>
-    </Card>
+    <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
+      {actions.map((action) => (
+        <Button
+          key={action.href}
+          asChild
+          variant="outline"
+          className={cn(
+            "h-auto flex-col items-start gap-2 p-4 text-left",
+            "hover:bg-primary-50 dark:hover:bg-primary-800/50",
+            "border-primary-100 dark:border-primary-700"
+          )}
+        >
+          <Link href={action.href}>
+            <action.icon className="h-5 w-5 text-primary-600 dark:text-primary-400" />
+            <div className="space-y-1">
+              <span className="text-sm font-medium text-primary-900 dark:text-primary-50">
+                {action.title}
+              </span>
+              <p className="text-xs text-primary-500 dark:text-primary-400">
+                {action.description}
+              </p>
+            </div>
+          </Link>
+        </Button>
+      ))}
+    </div>
   )
 } 

@@ -1,16 +1,13 @@
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { AlertTriangle } from "lucide-react"
 import { Skeleton } from "@/components/ui/skeleton"
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
-import { Badge } from "@/components/ui/badge"
-import { PartyPopper, AlertTriangle } from "lucide-react"
-import Link from "next/link"
+import { cn } from "@/lib/design-tokens"
 
 interface Book {
   id: number
   title: string
   author: string
   stock: number
-  coverImage: string | null
+  minStock: number
 }
 
 interface LowStockBooksProps {
@@ -19,63 +16,62 @@ interface LowStockBooksProps {
 }
 
 export function LowStockBooks({ books, loading = false }: LowStockBooksProps) {
-  // Render skeleton loading state
   if (loading) {
     return (
-      <Card>
-        <CardHeader>
-          <CardTitle>Stok Buku Menipis</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-4">
-            {[...Array(3)].map((_, i) => (
-              <Skeleton key={i} className="h-16 w-full" />
-            ))}
+      <div className="space-y-4">
+        {Array.from({ length: 3 }).map((_, i) => (
+          <div key={i} className="flex items-start gap-4">
+            <Skeleton className="h-10 w-10 rounded-md" />
+            <div className="space-y-2">
+              <Skeleton className="h-4 w-[200px]" />
+              <Skeleton className="h-3 w-[150px]" />
+            </div>
           </div>
-        </CardContent>
-      </Card>
+        ))}
+      </div>
+    )
+  }
+
+  if (!books.length) {
+    return (
+      <div className="flex h-[200px] items-center justify-center rounded-lg border border-dashed border-primary-200 dark:border-primary-700">
+        <p className="text-sm text-primary-500 dark:text-primary-400">
+          No low stock books
+        </p>
+      </div>
     )
   }
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Stok Buku Menipis</CardTitle>
-      </CardHeader>
-      <CardContent>
-        {books.length === 0 ? (
-          <Alert>
-            <PartyPopper className="h-4 w-4" />
-            <AlertTitle>Semua buku memiliki stok yang mencukupi</AlertTitle>
-            <AlertDescription>
-              Tidak ada buku yang stoknya di bawah 5.
-            </AlertDescription>
-          </Alert>
-        ) : (
-          <div className="space-y-3">
-            {books.map((book) => (
-              <Alert key={book.id} variant="destructive" className="border-yellow-500 bg-yellow-50 text-yellow-900 dark:border-yellow-900 dark:bg-yellow-950 dark:text-yellow-200">
-                <AlertTriangle className="h-4 w-4" />
-                <div className="flex flex-1 flex-col sm:flex-row sm:justify-between sm:items-center gap-2">
-                  <div>
-                    <AlertTitle className="text-sm font-medium">
-                      <Link href={`/admin/books/edit/${book.id}`} className="hover:underline">
-                        {book.title}
-                      </Link>
-                    </AlertTitle>
-                    <AlertDescription className="text-xs mt-1">
-                      {book.author}
-                    </AlertDescription>
-                  </div>
-                  <Badge variant="outline" className="self-start sm:self-center border-yellow-500 text-yellow-700 dark:border-yellow-700 dark:text-yellow-300">
-                    {book.stock} tersisa
-                  </Badge>
-                </div>
-              </Alert>
-            ))}
+    <div className="space-y-4">
+      {books.map((book) => (
+        <div key={book.id} className="flex items-start gap-4">
+          <div className="flex h-10 w-10 items-center justify-center rounded-md bg-warning-50 dark:bg-warning-950">
+            <AlertTriangle className="h-5 w-5 text-warning-600 dark:text-warning-400" />
           </div>
-        )}
-      </CardContent>
-    </Card>
+          <div className="flex-1 space-y-1">
+            <h3 className="text-sm font-medium text-primary-900 dark:text-primary-50">
+              {book.title}
+            </h3>
+            <p className="text-xs text-primary-500 dark:text-primary-400">
+              {book.author}
+            </p>
+          </div>
+          <div className="flex flex-col items-end">
+            <span className={cn(
+              "text-sm font-medium",
+              book.stock === 0
+                ? "text-error-600 dark:text-error-400"
+                : "text-warning-600 dark:text-warning-400"
+            )}>
+              {book.stock}
+            </span>
+            <span className="text-xs text-primary-500 dark:text-primary-400">
+              in stock
+            </span>
+          </div>
+        </div>
+      ))}
+    </div>
   )
 } 

@@ -1,33 +1,14 @@
-import { formatDistanceToNow } from "date-fns"
-import { id } from "date-fns/locale"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { format, isValid, parseISO } from "date-fns"
+import { Book, Check, Clock, X, AlertCircle } from "lucide-react"
 import { Skeleton } from "@/components/ui/skeleton"
-import { 
-  CircleCheck, 
-  CircleX, 
-  Clock, 
-  RotateCcw, 
-  ShoppingBag,
-  HelpCircle
-} from "lucide-react"
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import Link from "next/link"
+import { cn } from "@/lib/design-tokens"
 
 interface Activity {
   id: number
-  user: {
-    id: number
-    name: string
-    email: string
-  }
-  book: {
-    id: number
-    title: string
-    author: string
-    coverImage: string | null
-  }
-  status: string
-  updatedAt: string
+  type: "borrow" | "return" | "request" | "reject" | string // string agar fleksibel
+  memberName: string
+  bookTitle: string
+  timestamp: string
 }
 
 interface RecentActivityProps {
@@ -35,151 +16,108 @@ interface RecentActivityProps {
   loading?: boolean
 }
 
+const activityIcons = {
+  borrow: Book,
+  return: Check,
+  request: Clock,
+  reject: X,
+}
+
+const activityColors = {
+  borrow: "text-accent-600 bg-accent-50 dark:bg-accent-950 dark:text-accent-400",
+  return: "text-success-600 bg-success-50 dark:bg-success-950 dark:text-success-400",
+  request: "text-warning-600 bg-warning-50 dark:bg-warning-950 dark:text-warning-400",
+  reject: "text-error-600 bg-error-50 dark:bg-error-950 dark:text-error-400",
+}
+
+const activityLabels = {
+  borrow: "Borrowed",
+  return: "Returned",
+  request: "Requested",
+  reject: "Rejected",
+}
+
+// Utility function to safely format dates
+const formatDate = (timestamp: string | undefined | null): string => {
+  if (!timestamp) return "N/A"
+  
+  try {
+    const date = parseISO(timestamp)
+    if (!isValid(date)) return "Invalid Date"
+    return format(date, "MMM d, h:mm a")
+  } catch (error) {
+    console.error("Error formatting date:", error)
+    return "Invalid Date"
+  }
+}
+
 export function RecentActivity({ activities, loading = false }: RecentActivityProps) {
-  // Function to get the appropriate icon based on loan status
-  const getStatusIcon = (status: string) => {
-    switch (status) {
-      case "APPROVED":
-        return <CircleCheck className="h-5 w-5 text-green-500" />
-      case "REJECTED":
-        return <CircleX className="h-5 w-5 text-red-500" />
-      case "PENDING":
-        return <Clock className="h-5 w-5 text-amber-500" />
-      case "RETURNED":
-        return <RotateCcw className="h-5 w-5 text-blue-500" />
-      case "LATE":
-        return <Clock className="h-5 w-5 text-red-500" />
-      default:
-        return <HelpCircle className="h-5 w-5 text-gray-500" />
-    }
-  }
-
-  // Function to get activity description based on status
-  const getActivityDescription = (activity: Activity) => {
-    const userName = activity.user.name
-    const bookTitle = activity.book.title
-    
-    switch (activity.status) {
-      case "APPROVED":
-        return (
-          <>
-            <span className="font-medium">{userName}</span> telah disetujui untuk meminjam buku{" "}
-            <span className="font-medium">{bookTitle}</span>
-          </>
-        )
-      case "REJECTED":
-        return (
-          <>
-            <span className="font-medium">{userName}</span> ditolak untuk meminjam buku{" "}
-            <span className="font-medium">{bookTitle}</span>
-          </>
-        )
-      case "PENDING":
-        return (
-          <>
-            <span className="font-medium">{userName}</span> mengajukan peminjaman buku{" "}
-            <span className="font-medium">{bookTitle}</span>
-          </>
-        )
-      case "RETURNED":
-        return (
-          <>
-            <span className="font-medium">{userName}</span> telah mengembalikan buku{" "}
-            <span className="font-medium">{bookTitle}</span>
-          </>
-        )
-      case "LATE":
-        return (
-          <>
-            <span className="font-medium">{userName}</span> terlambat mengembalikan buku{" "}
-            <span className="font-medium">{bookTitle}</span>
-          </>
-        )
-      default:
-        return (
-          <>
-            <span className="font-medium">{userName}</span> melakukan aktivitas pada buku{" "}
-            <span className="font-medium">{bookTitle}</span>
-          </>
-        )
-    }
-  }
-
-  const getBookCoverInitials = (bookTitle: string) => {
-    return bookTitle
-      .split(" ")
-      .map((word) => word[0])
-      .slice(0, 2)
-      .join("")
-      .toUpperCase()
-  }
-
-  // Render skeleton loading state
   if (loading) {
     return (
-      <Card>
-        <CardHeader>
-          <CardTitle>Aktivitas Terbaru</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-4">
-            {[...Array(5)].map((_, i) => (
-              <div key={i} className="flex items-center gap-4">
-                <Skeleton className="h-10 w-10 rounded-full" />
-                <div className="flex-1 space-y-2">
-                  <Skeleton className="h-4 w-full" />
-                  <Skeleton className="h-3 w-24" />
-                </div>
-              </div>
-            ))}
+      <div className="space-y-4">
+        {Array.from({ length: 5 }).map((_, i) => (
+          <div key={i} className="flex items-start gap-4">
+            <Skeleton className="h-10 w-10 rounded-full" />
+            <div className="space-y-2">
+              <Skeleton className="h-4 w-[200px]" />
+              <Skeleton className="h-3 w-[150px]" />
+            </div>
           </div>
-        </CardContent>
-      </Card>
+        ))}
+      </div>
+    )
+  }
+
+  if (!activities?.length) {
+    return (
+      <div className="flex h-[200px] items-center justify-center rounded-lg border border-dashed border-primary-200 dark:border-primary-700">
+        <p className="text-sm text-primary-500 dark:text-primary-400">
+          No recent activities
+        </p>
+      </div>
     )
   }
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Aktivitas Terbaru</CardTitle>
-      </CardHeader>
-      <CardContent>
-        {activities.length === 0 ? (
-          <div className="flex h-40 flex-col items-center justify-center rounded-lg border border-dashed p-4 text-center">
-            <ShoppingBag className="mb-2 h-8 w-8 text-muted-foreground" />
-            <p className="text-sm font-medium text-muted-foreground">Belum ada aktivitas</p>
-          </div>
-        ) : (
-          <div className="space-y-4">
-            {activities.map((activity) => (
-              <div key={activity.id} className="flex items-start gap-4">
-                <Avatar className="h-10 w-10 border">
-                  <AvatarImage src={activity.book.coverImage || ""} alt={activity.book.title} />
-                  <AvatarFallback>{getBookCoverInitials(activity.book.title)}</AvatarFallback>
-                </Avatar>
-                <div className="flex-1">
-                  <div className="flex items-center gap-2">
-                    {getStatusIcon(activity.status)}
-                    <p className="text-sm">{getActivityDescription(activity)}</p>
-                  </div>
-                  <p className="mt-1 text-xs text-muted-foreground">
-                    {formatDistanceToNow(new Date(activity.updatedAt), {
-                      addSuffix: true,
-                      locale: id,
-                    })}
-                  </p>
-                </div>
-                <Link
-                  href={`/admin/request/${activity.id}`}
-                  className="text-xs font-medium text-primary hover:underline"
-                >
-                  Detail
-                </Link>
+    <div className="space-y-4">
+      {activities.map((activity) => {
+        const IconComponent = activityIcons[activity.type as keyof typeof activityIcons]
+        let iconToRender = IconComponent
+        let iconClass = cn("h-5 w-5")
+        let wrapperClass = cn("rounded-full p-2", activityColors[activity.type as keyof typeof activityColors])
+        if (!IconComponent) {
+          console.warn(`Unknown activity.type '${activity.type}' for activity.id ${activity.id}`)
+          iconToRender = AlertCircle
+          iconClass = cn("h-5 w-5 text-error-700 dark:text-error-300 animate-pulse")
+          wrapperClass = cn("rounded-full p-2 border-2 border-error-500 bg-error-50 dark:bg-error-950")
+        }
+        return (
+          <div key={activity.id} className="flex items-start gap-4">
+            <div className={wrapperClass}>
+              {iconToRender && <IconComponentOrFallback Icon={iconToRender} className={iconClass} />}
+            </div>
+            <div className="space-y-1">
+              <p className="text-sm font-medium text-primary-900 dark:text-primary-50">
+                {activity.memberName}
+              </p>
+              <div className="flex items-center gap-2 text-xs text-primary-500 dark:text-primary-400">
+                <span>{activityLabels[activity.type as keyof typeof activityLabels] || activity.type}</span>
+                <span>•</span>
+                <span>{activity.bookTitle}</span>
+                <span>•</span>
+                <time dateTime={activity.timestamp || undefined}>
+                  {formatDate(activity.timestamp)}
+                </time>
               </div>
-            ))}
+            </div>
           </div>
-        )}
-      </CardContent>
-    </Card>
+        )
+      })}
+    </div>
   )
+}
+
+// Tambahkan komponen pembungkus agar iconToRender bisa dipanggil sebagai komponen React
+function IconComponentOrFallback({ Icon, className }: { Icon: React.ComponentType<{ className?: string }>, className?: string }) {
+  return <Icon className={className} />
 } 
