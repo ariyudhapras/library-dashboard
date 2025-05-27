@@ -254,19 +254,18 @@ export default function UserProfilePage() {
   
   return (
     <div className="flex flex-col gap-6">
-      <PageHeader 
-        title="Profil Saya" 
-        description="Informasi dan pengaturan akun" 
-        showAddButton={false} 
-        rightContent={
-          <Link href="/user/profile/edit">
-            <Button>
+      <div className="mb-6">
+        <h1 className="text-2xl font-bold text-center mb-1">Profil Saya</h1>
+        <p className="text-center text-muted-foreground mb-4">Informasi dan pengaturan akun</p>
+        <div className="flex justify-center mb-4">
+          <Link href="/user/profile/edit" className="w-full sm:w-auto">
+            <Button className="w-full sm:w-auto" variant="default">
               <Edit className="h-4 w-4 mr-2" />
               Edit Profil
             </Button>
           </Link>
-        }
-      />
+        </div>
+      </div>
       
       {incompleteFields.length > 0 && (
         <Alert className="bg-amber-50 border-amber-200">

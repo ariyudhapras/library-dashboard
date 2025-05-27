@@ -184,15 +184,14 @@ export default function ActiveLoansPage() {
 
   return (
     <div className="flex flex-col gap-6">
-      <PageHeader 
-        title="Peminjaman Aktif" 
-        description="Kelola dan pantau peminjaman buku Anda" 
-        showAddButton={false}
-      />
+      {/* Judul dan deskripsi dipindah ke bawah */}
 
       <Card>
         <CardHeader>
-          <CardTitle>Daftar Peminjaman</CardTitle>
+          <CardTitle>
+            <div className="text-center text-2xl font-bold mb-2">Daftar Peminjaman</div>
+            <div className="text-center text-sm text-muted-foreground mb-2">Kelola dan pantau peminjaman buku Anda</div>
+          </CardTitle>
         </CardHeader>
         <CardContent>
           <Tabs defaultValue="all" className="w-full" onValueChange={setActiveTab}>
@@ -213,11 +212,11 @@ export default function ActiveLoansPage() {
                   Tidak ada data peminjaman
                 </div>
               ) : (
-                <div className="rounded-md border">
-                  <Table>
+                <div className="rounded-md border overflow-x-auto">
+                  <Table className="min-w-[700px]">
                     <TableHeader>
                       <TableRow>
-                        <TableHead>Buku</TableHead>
+                        <TableHead className="sticky left-0 z-10 bg-white">Buku</TableHead>
                         <TableHead>Tanggal Pinjam</TableHead>
                         <TableHead>Tanggal Kembali</TableHead>
                         <TableHead>Status</TableHead>
@@ -228,7 +227,7 @@ export default function ActiveLoansPage() {
                     <TableBody>
                       {filteredLoans.map((loan) => (
                         <TableRow key={loan.id}>
-                          <TableCell className="font-medium">
+                          <TableCell className="font-medium sticky left-0 z-10 bg-white">
                             <div className="flex items-start gap-3">
                               <div className="h-12 w-9 bg-muted rounded overflow-hidden flex-shrink-0">
                                 {loan.book.coverImage && (
@@ -310,6 +309,14 @@ export default function ActiveLoansPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Visual cue scroll kanan di mobile */}
+      <div className="block md:hidden text-xs text-center text-muted-foreground mt-2 select-none">
+        <span className="inline-flex items-center gap-1">
+          <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M5 12h14M13 18l6-6-6-6"/></svg>
+          Geser ke kanan untuk melihat detail
+        </span>
+      </div>
     </div>
   )
 } 

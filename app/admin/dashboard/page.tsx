@@ -1,15 +1,17 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { PageHeader } from "@/components/page-header"
-import { Book, Users, Archive, AlertCircle, Clock } from "lucide-react"
+import { Book, Users, Archive, AlertCircle, Clock, BookPlus, FileText } from "lucide-react"
+import { useToast } from "@/components/ui/use-toast"
+import { DashboardLayout, DashboardSection, DashboardHeader, DashboardContent, DashboardGrid } from "@/components/dashboard/DashboardLayout"
 import { SummaryCard } from "@/components/dashboard/SummaryCard"
 import { ActivityTrend } from "@/components/dashboard/ActivityTrend"
 import { RecentActivity } from "@/components/dashboard/RecentActivity"
 import { PopularBooks } from "@/components/dashboard/PopularBooks"
 import { LowStockBooks } from "@/components/dashboard/LowStockBooks"
-import { QuickActions } from "@/components/dashboard/QuickActions"
-import { useToast } from "@/components/ui/use-toast"
+import { useRouter } from "next/navigation"
+import BookDataTable from "@/components/book-data-table"
+import { AddBookDialog } from "@/components/AddBookDialog"
 
 /**
  * Dashboard Admin Page
@@ -41,6 +43,8 @@ export default function AdminDashboardPage() {
   })
   const [loading, setLoading] = useState(true)
   const { toast } = useToast()
+  const router = useRouter()
+  const [isAddDialogOpen, setIsAddDialogOpen] = useState(false)
 
   // Fetch dashboard data on component mount
   useEffect(() => {
@@ -59,7 +63,7 @@ export default function AdminDashboardPage() {
         console.error("Error fetching dashboard data:", error)
         toast({
           title: "Error",
-          description: "Gagal memuat data dashboard. Silakan coba lagi nanti.",
+          description: "Failed to load dashboard data. Please try again later.",
           variant: "destructive",
         })
       } finally {
@@ -70,88 +74,208 @@ export default function AdminDashboardPage() {
     fetchDashboardData()
   }, [toast])
 
+  const handleCardClick = (type: string) => {
+    switch (type) {
+      case "books":
+        router.push("/admin/books")
+        break
+      case "activeLoans":
+        router.push("/admin/requests?tab=approved")
+        break
+      case "members":
+        router.push("/admin/members")
+        break
+      case "overdue":
+        router.push("/admin/reports?tab=overdue")
+        break
+      case "pending":
+        router.push("/admin/requests?tab=pending")
+        break
+      case "addBook":
+        setIsAddDialogOpen(true)
+        break
+      case "returns":
+        router.push("/admin/returns")
+        break
+    }
+  }
+
   return (
-    <div className="flex flex-col gap-6">
+    <DashboardLayout>
       {/* Header */}
-      <PageHeader 
-        title="Dashboard Admin" 
-        description="Ringkasan dan statistik perpustakaan digital" 
-        showAddButton={false} 
-      />
-      
+      <DashboardSection>
+        <DashboardHeader>
+          <h1 className="text-2xl font-semibold text-primary-900 dark:text-primary-50">
+            Dashboard
+          </h1>
+          <p className="mt-1 text-sm text-primary-500 dark:text-primary-400">
+            Overview of library statistics and recent activities
+          </p>
+        </DashboardHeader>
+      </DashboardSection>
+
       {/* Summary Cards */}
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
-        <SummaryCard 
-          title="Total Buku" 
-          value={dashboardData.summary.totalBooks} 
-          icon={Book}
-          loading={loading}
-          colorClass="text-blue-600 bg-blue-100 dark:bg-blue-950 dark:text-blue-400"
-        />
-        
-        <SummaryCard 
-          title="Sedang Dipinjam" 
-          value={dashboardData.summary.activeBorrowedBooks} 
-          icon={Archive}
-          loading={loading}
-          colorClass="text-green-600 bg-green-100 dark:bg-green-950 dark:text-green-400"
-        />
-        
-        <SummaryCard 
-          title="Total Anggota" 
-          value={dashboardData.summary.totalMembers} 
-          icon={Users}
-          loading={loading}
-          colorClass="text-violet-600 bg-violet-100 dark:bg-violet-950 dark:text-violet-400"
-        />
-        
-        <SummaryCard 
-          title="Buku Terlambat" 
-          value={dashboardData.summary.overdueBooks} 
-          icon={AlertCircle}
-          loading={loading}
-          colorClass="text-red-600 bg-red-100 dark:bg-red-950 dark:text-red-400"
-        />
-        
-        <SummaryCard 
-          title="Permintaan Baru" 
-          value={dashboardData.summary.pendingRequests} 
-          icon={Clock}
-          loading={loading}
-          colorClass="text-amber-600 bg-amber-100 dark:bg-amber-950 dark:text-amber-400"
-        />
-      </div>
-      
-      {/* Activity Charts */}
-      <ActivityTrend 
-        activityData={dashboardData.monthlyTrends} 
-        memberData={dashboardData.memberTrends}
-        loading={loading}
-      />
-      
-      {/* Bottom Section - 3 columns on large screens, stacked on small */}
-      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-        {/* Recent Activities */}
-        <RecentActivity 
-          activities={dashboardData.recentActivities}
-          loading={loading}
-        />
-        
-        {/* Popular Books */}
-        <PopularBooks 
-          books={dashboardData.popularBooks}
-          loading={loading}
-        />
-        
-        {/* Quick Actions and Low Stock Books */}
-        <div className="flex flex-col gap-6">
-          <QuickActions />
-          <LowStockBooks 
-            books={dashboardData.lowStockBooks}
+      <DashboardGrid>
+        <div
+          onClick={() => handleCardClick("books")}
+          className="cursor-pointer transition hover:shadow-md hover:-translate-y-1 focus:outline-none focus:ring-2 focus:ring-accent-500 rounded-lg"
+          tabIndex={0}
+          role="button"
+          aria-label="Lihat semua buku"
+        >
+          <SummaryCard 
+            title="Total Books" 
+            value={dashboardData.summary.totalBooks} 
+            icon={Book}
             loading={loading}
+            colorClass="text-accent-600 bg-accent-50 dark:bg-accent-950 dark:text-accent-400"
           />
         </div>
+        <div
+          onClick={() => handleCardClick("activeLoans")}
+          className="cursor-pointer transition hover:shadow-md hover:-translate-y-1 focus:outline-none focus:ring-2 focus:ring-success-500 rounded-lg"
+          tabIndex={0}
+          role="button"
+          aria-label="Lihat peminjaman aktif"
+        >
+          <SummaryCard 
+            title="Active Loans" 
+            value={dashboardData.summary.activeBorrowedBooks} 
+            icon={Archive}
+            loading={loading}
+            colorClass="text-success-600 bg-success-50 dark:bg-success-950 dark:text-success-400"
+          />
+        </div>
+        <div
+          onClick={() => handleCardClick("members")}
+          className="cursor-pointer transition hover:shadow-md hover:-translate-y-1 focus:outline-none focus:ring-2 focus:ring-primary-500 rounded-lg"
+          tabIndex={0}
+          role="button"
+          aria-label="Lihat anggota perpustakaan"
+        >
+          <SummaryCard 
+            title="Total Members" 
+            value={dashboardData.summary.totalMembers} 
+            icon={Users}
+            loading={loading}
+            colorClass="text-primary-600 bg-primary-50 dark:bg-primary-950 dark:text-primary-400"
+          />
+        </div>
+        <div
+          onClick={() => handleCardClick("overdue")}
+          className="cursor-pointer transition hover:shadow-md hover:-translate-y-1 focus:outline-none focus:ring-2 focus:ring-error-500 rounded-lg"
+          tabIndex={0}
+          role="button"
+          aria-label="Lihat buku terlambat"
+        >
+          <SummaryCard 
+            title="Overdue Books" 
+            value={dashboardData.summary.overdueBooks} 
+            icon={AlertCircle}
+            loading={loading}
+            colorClass="text-error-600 bg-error-50 dark:bg-error-950 dark:text-error-400"
+          />
+        </div>
+        <div
+          onClick={() => handleCardClick("pending")}
+          className="cursor-pointer transition hover:shadow-md hover:-translate-y-1 focus:outline-none focus:ring-2 focus:ring-warning-500 rounded-lg"
+          tabIndex={0}
+          role="button"
+          aria-label="Lihat permintaan peminjaman pending"
+        >
+          <SummaryCard 
+            title="Pending Requests" 
+            value={dashboardData.summary.pendingRequests} 
+            icon={Clock}
+            loading={loading}
+            colorClass="text-warning-600 bg-warning-50 dark:bg-warning-950 dark:text-warning-400"
+          />
+        </div>
+        {/* Add Book Card */}
+        <div
+          onClick={() => handleCardClick("addBook")}
+          className="cursor-pointer transition hover:shadow-md hover:-translate-y-1 focus:outline-none focus:ring-2 focus:ring-accent-400 rounded-lg"
+          tabIndex={0}
+          role="button"
+          aria-label="Tambah buku baru"
+        >
+          <SummaryCard
+            title="Add Book"
+            value={null}
+            icon={BookPlus}
+            loading={loading}
+            colorClass="text-accent-700 bg-accent-100 dark:bg-accent-900 dark:text-accent-300"
+            description="Add a new book to the catalog"
+          />
+        </div>
+        {/* Returns Card */}
+        <div
+          onClick={() => handleCardClick("returns")}
+          className="cursor-pointer transition hover:shadow-md hover:-translate-y-1 focus:outline-none focus:ring-2 focus:ring-warning-400 rounded-lg"
+          tabIndex={0}
+          role="button"
+          aria-label="Proses pengembalian buku"
+        >
+          <SummaryCard
+            title="Returns"
+            value={null}
+            icon={FileText}
+            loading={loading}
+            colorClass="text-warning-700 bg-warning-100 dark:bg-warning-900 dark:text-warning-300"
+            description="Process book returns"
+          />
+        </div>
+      </DashboardGrid>
+      
+      {/* Activity Charts */}
+      <DashboardSection>
+        <DashboardHeader>
+          <h2 className="text-lg font-semibold text-primary-900 dark:text-primary-50">
+            Library Activity Trends
+          </h2>
+        </DashboardHeader>
+        <DashboardContent>
+          <ActivityTrend 
+            activityData={dashboardData.monthlyTrends} 
+            memberData={dashboardData.memberTrends}
+            loading={loading}
+          />
+        </DashboardContent>
+      </DashboardSection>
+      
+      {/* Bottom Section */}
+      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-2">
+        {/* Low Stock Books (left) */}
+        <DashboardSection>
+          <DashboardHeader>
+            <h2 className="text-lg font-semibold text-primary-900 dark:text-primary-50">
+              Low Stock Books
+            </h2>
+          </DashboardHeader>
+          <DashboardContent>
+            <LowStockBooks 
+              books={dashboardData.lowStockBooks}
+              loading={loading}
+            />
+          </DashboardContent>
+        </DashboardSection>
+        {/* Popular Books (right) */}
+        <DashboardSection>
+          <DashboardHeader>
+            <h2 className="text-lg font-semibold text-primary-900 dark:text-primary-50">
+              Popular Books
+            </h2>
+          </DashboardHeader>
+          <DashboardContent>
+            <PopularBooks 
+              books={dashboardData.popularBooks}
+              loading={loading}
+            />
+          </DashboardContent>
+        </DashboardSection>
       </div>
-    </div>
+      {/* Add Book Dialog */}
+      <AddBookDialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen} />
+    </DashboardLayout>
   )
 } 
