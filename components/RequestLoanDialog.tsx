@@ -67,13 +67,34 @@ export default function RequestLoanDialog({ open, onOpenChange, book, onSuccess 
   }
 
   const handleSubmit = async () => {
-    setIsSubmitting(true)
-    // Simulasi submit, ganti dengan API call sesuai kebutuhan
-    setTimeout(() => {
-      setIsSubmitting(false)
-      onOpenChange(false)
-      if (onSuccess) onSuccess()
-    }, 1200)
+    if (!book || !borrowDate || !returnDate) return;
+    setIsSubmitting(true);
+    try {
+      const response = await fetch('/api/bookloans', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          bookId: book.id,
+          borrowDate: borrowDate.toISOString(),
+          returnDate: returnDate.toISOString(),
+          notes,
+        }),
+      });
+      if (!response.ok) {
+        const errorData = await response.json();
+        alert(errorData.error || 'Gagal mengajukan peminjaman');
+        setIsSubmitting(false);
+        return;
+      }
+      setIsSubmitting(false);
+      onOpenChange(false);
+      if (onSuccess) onSuccess();
+    } catch (error) {
+      setIsSubmitting(false);
+      alert('Terjadi kesalahan saat mengajukan peminjaman');
+    }
   }
 
   return (

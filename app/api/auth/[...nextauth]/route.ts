@@ -13,6 +13,7 @@ export const authOptions: NextAuthOptions = {
   session: {
     strategy: "jwt",
     maxAge: 24 * 60 * 60, // 24 hours
+    updateAge: 60 * 60, // 1 hour
   },
   providers: [
     CredentialsProvider({
@@ -23,11 +24,11 @@ export const authOptions: NextAuthOptions = {
       },
       async authorize(credentials) {
         if (!credentials?.email || !credentials?.password) {
+          console.log('[AUTH] No credentials provided');
           return null
         }
 
         try {
-          // Always fetch fresh data from the database
           const user = await prisma.user.findUnique({
             where: {
               email: credentials.email,
@@ -35,16 +36,18 @@ export const authOptions: NextAuthOptions = {
           })
 
           if (!user) {
+            console.log('[AUTH] User not found:', credentials.email)
             return null
           }
           
           const isPasswordValid = await compare(credentials.password, user.password)
 
           if (!isPasswordValid) {
+            console.log('[AUTH] Password invalid for:', user.email)
             return null
           }
           
-          // Return fresh user data with updated role
+          console.log('[AUTH] Login success for:', user.email)
           return {
             id: user.id.toString(),
             email: user.email,
@@ -52,9 +55,10 @@ export const authOptions: NextAuthOptions = {
             memberId: user.memberId,
             role: user.role,
             status: user.status,
+            profileImage: user.profileImage || null,
           }
         } catch (error) {
-          console.error("Login error:", error)
+          console.error('[AUTH] Login error:', error)
           return null
         }
       },
@@ -69,6 +73,7 @@ export const authOptions: NextAuthOptions = {
         token.memberId = user.memberId
         token.role = user.role
         token.status = user.status
+        token.profileImage = user.profileImage || undefined;
       }
       
       return token
@@ -81,9 +86,28 @@ export const authOptions: NextAuthOptions = {
         session.user.memberId = token.memberId as string
         session.user.role = token.role as string
         session.user.status = token.status as string
+        session.user.profileImage = token.profileImage || undefined;
       }
       
       return session
+    },
+    redirect: async ({ url, baseUrl }) => {
+      // Allows relative callback URLs
+      if (url.startsWith("/")) return `${baseUrl}${url}`
+      // Allows callback URLs on the same origin
+      else if (new URL(url).origin === baseUrl) return url
+      return baseUrl
+    },
+  },
+  events: {
+    async signIn({ user }) {
+      // Update last login time
+      if (user?.email) {
+        await prisma.user.update({
+          where: { email: user.email },
+          data: { lastLogin: new Date() },
+        })
+      }
     },
   },
 }

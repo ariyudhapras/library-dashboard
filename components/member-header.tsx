@@ -3,7 +3,7 @@
 import { useState } from "react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { BookOpen, Menu, User, BookMarked, Clock, LogOut, Loader2 } from "lucide-react"
+import { BookOpen, Menu, User, BookMarked, Clock, LogOut, Loader2, Heart } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet"
@@ -13,6 +13,7 @@ const navigation = [
   { name: "Beranda", href: "/beranda", icon: BookOpen },
   { name: "Peminjaman Saya", href: "/peminjaman", icon: BookMarked },
   { name: "Riwayat", href: "/riwayat", icon: Clock },
+  { name: "Wishlist", href: "/user/wishlist", icon: Heart },
 ]
 
 export default function MemberHeader() {

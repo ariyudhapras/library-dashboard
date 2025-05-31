@@ -129,16 +129,10 @@ export default function HistoryPage() {
 
   return (
     <div className="flex flex-col gap-6">
-      <PageHeader 
-        title="Riwayat Peminjaman Saya" 
-        description="Daftar semua riwayat peminjaman buku Anda di perpustakaan digital" 
-        showAddButton={false}
-      />
-
+      <div className="px-1 pt-2 pb-0">
+        <h1 className="text-2xl font-bold leading-tight">Daftar Riwayat Peminjaman</h1>
+      </div>
       <Card>
-        <CardHeader>
-          <CardTitle>Daftar Riwayat Peminjaman</CardTitle>
-        </CardHeader>
         <CardContent>
           <div className="mb-4 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <div className="relative w-full sm:max-w-xs">
@@ -188,77 +182,28 @@ export default function HistoryPage() {
               Tidak ada data riwayat peminjaman
             </div>
           ) : (
-            <>
-              <div className="rounded-md border">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Buku</TableHead>
-                      <TableHead>Tanggal Pinjam</TableHead>
-                      <TableHead>Tanggal Kembali</TableHead>
-                      <TableHead>Tanggal Aktual Kembali</TableHead>
-                      <TableHead>Status</TableHead>
-                      <TableHead>Catatan</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {filteredLoans.map((loan) => (
-                      <TableRow key={loan.id}>
-                        <TableCell className="font-medium">
-                          <div className="flex items-start gap-3">
-                            <div className="h-12 w-9 bg-muted rounded overflow-hidden flex-shrink-0">
-                              {loan.book.coverImage && (
-                                <img 
-                                  src={loan.book.coverImage} 
-                                  alt={loan.book.title}
-                                  className="h-full w-full object-cover"
-                                />
-                              )}
-                            </div>
-                            <div>
-                              <div className="font-medium">{loan.book.title}</div>
-                              <div className="text-sm text-muted-foreground">{loan.book.author}</div>
-                              {calculateFine(loan) && (
-                                <div className="text-xs text-red-600 font-medium mt-1">
-                                  {calculateFine(loan)}
-                                </div>
-                              )}
-                            </div>
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          {format(new Date(loan.borrowDate), "d MMM yyyy", { locale: id })}
-                        </TableCell>
-                        <TableCell>
-                          {format(new Date(loan.returnDate), "d MMM yyyy", { locale: id })}
-                        </TableCell>
-                        <TableCell>
-                          {loan.actualReturnDate 
-                            ? format(new Date(loan.actualReturnDate), "d MMM yyyy", { locale: id }) 
-                            : '-'}
-                        </TableCell>
-                        <TableCell>
-                          {getStatusBadge(loan.status)}
-                        </TableCell>
-                        <TableCell className="max-w-[200px] truncate">
-                          {loan.notes || '-'}
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </div>
-
-              {/* Mobile view - Card layout for each item */}
-              <div className="mt-4 space-y-4 md:hidden">
-                {filteredLoans.map((loan) => (
-                  <Card key={loan.id} className="overflow-hidden">
-                    <CardContent className="p-4">
-                      <div className="mb-2 flex items-center justify-between">
-                        <h3 className="font-semibold">{loan.book.title}</h3>
+            <div className="space-y-4">
+              {filteredLoans.map((loan) => (
+                <Card key={loan.id} className="overflow-hidden border shadow-sm">
+                  <CardContent className="p-4 flex gap-4">
+                    <div className="h-20 w-16 bg-muted rounded overflow-hidden flex-shrink-0 flex items-center justify-center">
+                      {loan.book.coverImage ? (
+                        <img 
+                          src={loan.book.coverImage} 
+                          alt={loan.book.title}
+                          className="h-full w-full object-cover"
+                        />
+                      ) : (
+                        <Book className="h-8 w-8 text-muted-foreground" />
+                      )}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center justify-between mb-1">
+                        <h3 className="font-semibold truncate max-w-[70%]">{loan.book.title}</h3>
                         {getStatusBadge(loan.status)}
                       </div>
-                      <div className="space-y-1 text-sm">
+                      <div className="text-sm text-muted-foreground truncate">{loan.book.author}</div>
+                      <div className="mt-2 space-y-1 text-sm">
                         <div className="flex justify-between">
                           <span className="text-muted-foreground">Tanggal Pinjam:</span>
                           <span>{format(new Date(loan.borrowDate), "d MMM yyyy", { locale: id })}</span>
@@ -269,11 +214,11 @@ export default function HistoryPage() {
                         </div>
                         <div className="flex justify-between">
                           <span className="text-muted-foreground">Tanggal Aktual Kembali:</span>
-                          <span>
-                            {loan.actualReturnDate 
-                              ? format(new Date(loan.actualReturnDate), "d MMM yyyy", { locale: id }) 
-                              : '-'}
-                          </span>
+                          <span>{loan.actualReturnDate ? format(new Date(loan.actualReturnDate), "d MMM yyyy", { locale: id }) : '-'}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-muted-foreground">Catatan:</span>
+                          <span className="truncate max-w-[120px]">{loan.notes || '-'}</span>
                         </div>
                         {calculateFine(loan) && (
                           <div className="flex justify-between text-red-600">
@@ -282,11 +227,11 @@ export default function HistoryPage() {
                           </div>
                         )}
                       </div>
-                    </CardContent>
-                  </Card>
-                ))}
-              </div>
-            </>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
           )}
         </CardContent>
       </Card>

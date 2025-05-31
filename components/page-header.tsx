@@ -3,6 +3,7 @@
 import { ReactNode } from "react"
 import { Button } from "@/components/ui/button"
 import { Plus } from "lucide-react"
+import { cn } from "@/lib/utils"
 
 interface PageHeaderProps {
   title: string
@@ -11,6 +12,7 @@ interface PageHeaderProps {
   addButtonLabel?: string
   onAddClick?: () => void
   rightContent?: ReactNode
+  className?: string
 }
 
 export function PageHeader({
@@ -20,12 +22,13 @@ export function PageHeader({
   addButtonLabel = "Tambah Buku",
   onAddClick,
   rightContent,
+  className,
 }: PageHeaderProps) {
   return (
-    <div className="flex flex-col gap-1 md:flex-row md:items-center md:justify-between">
+    <div className={cn("flex flex-col gap-1 md:flex-row md:items-center md:justify-between", className)}>
       <div>
-        <h1 className="text-2xl font-bold tracking-tight">{title}</h1>
-        {description && <p className="text-sm text-muted-foreground">{description}</p>}
+        <h1 className="text-2xl font-semibold sm:text-3xl tracking-tight">{title}</h1>
+        {description && <p className="mt-2 text-sm text-muted-foreground">{description}</p>}
       </div>
       {rightContent ? (
         rightContent

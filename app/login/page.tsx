@@ -11,8 +11,9 @@ import { InfoIcon } from "lucide-react"
 export default function LoginPage() {
   const router = useRouter()
   const searchParams = useSearchParams()
+  const callbackUrl = searchParams.get('callbackUrl') || '/user/beranda'
   const success = searchParams.get('success')
-  const { data: session, status } = useSession()
+  const { data: session, status, update } = useSession()
   const [error, setError] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
@@ -21,14 +22,21 @@ export default function LoginPage() {
     password: ""
   })
 
+  // Debug log untuk session status
+  useEffect(() => {
+    console.log('Session status:', status)
+    console.log('Session data:', session)
+  }, [session, status])
+
   // Redirect if already logged in based on role
   useEffect(() => {
     if (status === "authenticated" && session?.user) {
+      console.log('User authenticated, redirecting...')
       // Regular login redirect based on user role
       if (session.user.role === "admin") {
-        router.push("/admin/dashboard")
+        router.replace("/admin/dashboard")
       } else {
-        router.push("/user/beranda")
+        router.replace("/user/beranda")
       }
     }
   }, [session, status, router])
@@ -47,12 +55,15 @@ export default function LoginPage() {
     setIsLoading(true)
 
     try {
-      // Use the signIn method from NextAuth
+      console.log('Attempting login...')
       const result = await signIn("credentials", {
         email: formData.email,
         password: formData.password,
         redirect: false,
+        callbackUrl: '/user/beranda'
       })
+      
+      console.log('Sign in result:', result)
       
       if (result?.error) {
         setError("Email atau password salah")
@@ -60,8 +71,9 @@ export default function LoginPage() {
         return
       }
 
-      // Success - the session will be updated automatically
-      // The redirect will be handled by the useEffect above
+      if (result?.ok) {
+        window.location.replace(result.url || '/user/beranda')
+      }
     } catch (error) {
       console.error("Login error:", error)
       setError("Terjadi kesalahan. Silakan coba lagi.")
@@ -71,7 +83,11 @@ export default function LoginPage() {
 
   // If loading session, show loading state
   if (status === "loading") {
-    return <div className="flex items-center justify-center min-h-screen">Loading...</div>
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+      </div>
+    )
   }
 
   return (

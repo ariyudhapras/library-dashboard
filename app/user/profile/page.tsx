@@ -253,7 +253,7 @@ export default function UserProfilePage() {
   }
   
   return (
-    <div className="flex flex-col gap-6">
+    <div className="w-full max-w-5xl mx-auto flex flex-col gap-6">
       <div className="mb-6">
         <h1 className="text-2xl font-bold text-center mb-1">Profil Saya</h1>
         <p className="text-center text-muted-foreground mb-4">Informasi dan pengaturan akun</p>

@@ -22,6 +22,8 @@ model User {
   profileImage String?
   status       String     @default("active")
   bookLoans    BookLoan[]
+  wishlists    Wishlist[]
+  lastLogin DateTime? @default(now())
 }
 
 model Book {
@@ -36,6 +38,7 @@ model Book {
   updatedAt  DateTime   @updatedAt
   coverImage String?
   bookLoans  BookLoan[]
+  wishlists  Wishlist[]
 }
 
 model BookLoan {
@@ -59,4 +62,15 @@ enum LoanStatus {
   REJECTED
   RETURNED
   LATE
+}
+
+model Wishlist {
+  id        Int      @id @default(autoincrement())
+  userId    Int
+  bookId    Int
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id])
+  book      Book     @relation(fields: [bookId], references: [id])
+
+  @@unique([userId, bookId])
 }

@@ -67,7 +67,7 @@ const profileFormSchema = z.object({
 type ProfileFormValues = z.infer<typeof profileFormSchema>
 
 export default function UserProfileEditPage() {
-  const { data: session, status: sessionStatus } = useSession()
+  const { data: session, status: sessionStatus, update } = useSession()
   const router = useRouter()
   const { toast } = useToast()
   
@@ -219,6 +219,9 @@ export default function UserProfileEditPage() {
       
       const data = await response.json()
       setDebugInfo('Profile updated successfully')
+      if (update) {
+        await update();
+      }
       
       // Notifikasi sukses
       toast({
@@ -310,6 +313,10 @@ export default function UserProfileEditPage() {
         ...prev,
         profileImage: data.profileImage
       } : null)
+      
+      if (update) {
+        await update();
+      }
       
       toast({
         title: 'Foto profil berhasil diperbarui',

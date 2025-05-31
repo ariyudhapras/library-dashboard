@@ -109,17 +109,17 @@ export default function ActiveLoansPage() {
   const getStatusBadge = (status: string) => {
     switch (status) {
       case 'PENDING':
-        return <Badge variant="outline" className="bg-yellow-50 text-yellow-700 border-yellow-200">Menunggu</Badge>
+        return <Badge color="yellow" className="border border-yellow-200">Menunggu</Badge>
       case 'APPROVED':
-        return <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">Disetujui</Badge>
+        return <Badge color="green" className="border border-green-200">Disetujui</Badge>
       case 'REJECTED':
-        return <Badge variant="outline" className="bg-red-50 text-red-700 border-red-200">Ditolak</Badge>
+        return <Badge color="red" className="border border-red-200">Ditolak</Badge>
       case 'RETURNED':
-        return <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">Dikembalikan</Badge>
+        return <Badge color="blue" className="border border-blue-200">Dikembalikan</Badge>
       case 'LATE':
-        return <Badge variant="outline" className="bg-purple-50 text-purple-700 border-purple-200">Terlambat</Badge>
+        return <Badge color="gray" className="border border-purple-200">Terlambat</Badge>
       default:
-        return <Badge variant="outline">{status}</Badge>
+        return <Badge>{status}</Badge>
     }
   }
 
@@ -183,7 +183,7 @@ export default function ActiveLoansPage() {
   })
 
   return (
-    <div className="flex flex-col gap-6">
+    <div className="w-full max-w-5xl mx-auto flex flex-col gap-6">
       {/* Judul dan deskripsi dipindah ke bawah */}
 
       <Card>

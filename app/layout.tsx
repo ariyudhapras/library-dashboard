@@ -2,6 +2,8 @@ import type { Metadata } from "next"
 import { Inter } from "next/font/google"
 import "./globals.css"
 import { Providers } from "./providers"
+import { Toaster } from "sonner"
+import ClientSessionProvider from "@/components/ClientSessionProvider"
 
 const inter = Inter({ subsets: ["latin"] })
 
@@ -18,7 +20,10 @@ export default function RootLayout({
   return (
     <html lang="id" suppressHydrationWarning>
       <body className={`${inter.className} min-h-screen bg-background antialiased`}>
-        <Providers>{children}</Providers>
+        <ClientSessionProvider>
+          <Providers>{children}</Providers>
+          <Toaster />
+        </ClientSessionProvider>
       </body>
     </html>
   )

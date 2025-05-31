@@ -57,12 +57,12 @@ export function QuickActions() {
           )}
         >
           <Link href={action.href}>
-            <action.icon className="h-5 w-5 text-primary-600 dark:text-primary-400" />
-            <div className="space-y-1">
-              <span className="text-sm font-medium text-primary-900 dark:text-primary-50">
+            <action.icon className="h-6 w-6 text-primary-600 dark:text-primary-400" />
+            <div className="space-y-1.5">
+              <span className="text-base font-semibold text-primary-900 dark:text-primary-50">
                 {action.title}
               </span>
-              <p className="text-xs text-primary-500 dark:text-primary-400">
+              <p className="text-sm text-primary-500 dark:text-primary-400">
                 {action.description}
               </p>
             </div>
