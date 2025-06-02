@@ -51,7 +51,12 @@ export async function GET(request: NextRequest) {
 
     const bookLoans = await prisma.bookLoan.findMany({
       where: whereClause,
-      include: {
+      select: {
+        id: true,
+        borrowDate: true,
+        returnDate: true,
+        status: true,
+        actualReturnDate: true,
         book: {
           select: {
             id: true,
@@ -73,6 +78,7 @@ export async function GET(request: NextRequest) {
         createdAt: 'desc'
       }
     });
+    
     
     return NextResponse.json(bookLoans);
   } catch (error) {

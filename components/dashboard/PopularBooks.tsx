@@ -1,23 +1,27 @@
-import { Book } from "lucide-react"
-import { Skeleton } from "@/components/ui/skeleton"
-import { cn } from "@/lib/design-tokens"
-import PopularBookCard from "./PopularBookCard"
+import { Book } from "lucide-react";
+import { Skeleton } from "@/components/ui/skeleton";
+import { cn } from "@/lib/design-tokens";
+import PopularBookCard from "./PopularBookCard";
 
 interface Book {
-  id: number
-  title: string
-  author: string
-  borrowCount: number
-  coverImage?: string | null
+  id: number;
+  title: string;
+  author: string;
+  borrowCount: number;
+  coverImage?: string | null;
 }
 
 interface PopularBooksProps {
-  books: Book[]
-  loading?: boolean
-  onBookClick?: (book: Book) => void
+  books: Book[];
+  loading?: boolean;
+  onBookClick?: (book: Book) => void;
 }
 
-export function PopularBooks({ books, loading = false, onBookClick }: PopularBooksProps) {
+export function PopularBooks({
+  books,
+  loading = false,
+  onBookClick,
+}: PopularBooksProps) {
   if (loading) {
     return (
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
@@ -29,7 +33,7 @@ export function PopularBooks({ books, loading = false, onBookClick }: PopularBoo
           </div>
         ))}
       </div>
-    )
+    );
   }
 
   if (!books?.length) {
@@ -45,7 +49,7 @@ export function PopularBooks({ books, loading = false, onBookClick }: PopularBoo
           Jadilah yang pertama meminjam buku dari koleksi kami!
         </p>
       </div>
-    )
+    );
   }
 
   // Hanya tampilkan 3 buku populer
@@ -56,7 +60,12 @@ export function PopularBooks({ books, loading = false, onBookClick }: PopularBoo
       <div className="hidden md:grid grid-cols-3 gap-6">
         {topBooks.map((book, i) => (
           <div className="flex justify-center" key={book.id}>
-            <PopularBookCard book={book} rank={i + 1} large cardWidth="w-56 md:w-72" />
+            <PopularBookCard
+              book={book}
+              rank={i + 1}
+              large
+              cardWidth="w-56 md:w-72"
+            />
           </div>
         ))}
       </div>
@@ -64,10 +73,15 @@ export function PopularBooks({ books, loading = false, onBookClick }: PopularBoo
       <div className="flex md:hidden flex-col items-center gap-6 px-4 pb-2">
         {topBooks.map((book, i) => (
           <div className="w-full max-w-sm" key={book.id}>
-            <PopularBookCard book={book} rank={i + 1} large cardWidth="w-full max-w-sm" />
+            <PopularBookCard
+              book={book}
+              rank={i + 1}
+              large
+              cardWidth="w-full max-w-sm"
+            />
           </div>
         ))}
       </div>
     </div>
-  )
-} 
+  );
+}
