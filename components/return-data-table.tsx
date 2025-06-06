@@ -18,8 +18,18 @@ import {
 import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
 
+interface ReturnItem {
+  id: number;
+  memberName: string;
+  bookTitle: string;
+  dueDate: string;
+  returnDate: string | null;
+  status: "dipinjam" | "terlambat" | "dikembalikan";
+  fine: number;
+}
+
 // Sample return data
-const initialReturns = [
+const initialReturns: ReturnItem[] = [
   {
     id: 1,
     memberName: "Budi Santoso",
@@ -68,7 +78,7 @@ const initialReturns = [
 ]
 
 // Calculate fine based on days late (Rp 5,000 per day)
-const calculateFine = (dueDate, returnDate) => {
+const calculateFine = (dueDate: string, returnDate: string | null): number => {
   if (!returnDate) {
     // If not returned yet, calculate fine based on current date
     const today = new Date()
@@ -85,7 +95,7 @@ const calculateFine = (dueDate, returnDate) => {
 }
 
 // Format currency to Indonesian Rupiah
-const formatCurrency = (amount) => {
+const formatCurrency = (amount: number): string => {
   return new Intl.NumberFormat("id-ID", {
     style: "currency",
     currency: "IDR",
@@ -93,26 +103,27 @@ const formatCurrency = (amount) => {
   }).format(amount)
 }
 
-export default function ReturnDataTable() {
-  const [returns, setReturns] = useState(
-    initialReturns.map((item) => ({
+export default function ReturnDataTable(): JSX.Element {
+  const [returns, setReturns] = useState<ReturnItem[]>(
+    initialReturns.map((item: ReturnItem): ReturnItem => ({
       ...item,
       fine: calculateFine(item.dueDate, item.returnDate),
     })),
   )
   const [isReturnDialogOpen, setIsReturnDialogOpen] = useState(false)
-  const [selectedReturn, setSelectedReturn] = useState(null)
+  const [selectedReturn, setSelectedReturn] = useState<ReturnItem | null>(null)
   const [searchQuery, setSearchQuery] = useState("")
 
-  const handleReturn = (returnItem) => {
+  const handleReturn = (returnItem: ReturnItem): void => {
     setSelectedReturn(returnItem)
     setIsReturnDialogOpen(true)
   }
 
-  const confirmReturn = () => {
+  const confirmReturn = (): void => {
+    if (!selectedReturn) return;
     const today = new Date()
-    const updatedReturns = returns.map((returnItem) => {
-      if (returnItem.id === selectedReturn.id) {
+    const updatedReturns = returns.map((returnItem: ReturnItem): ReturnItem => {
+      if (returnItem.id === selectedReturn!.id) { // selectedReturn is checked above
         const returnDate = format(today, "yyyy-MM-dd")
         const fine = calculateFine(returnItem.dueDate, returnDate)
         return {
@@ -128,42 +139,41 @@ export default function ReturnDataTable() {
     setIsReturnDialogOpen(false)
   }
 
-  const getStatusBadge = (status) => {
+  const getStatusBadge = (status: ReturnItem['status']): JSX.Element => {
     switch (status) {
       case "dipinjam":
         return (
-          <Badge variant="outline" className="bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300">
+          <Badge className="bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300">
             Dipinjam
           </Badge>
         )
       case "terlambat":
         return (
-          <Badge variant="outline" className="bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300">
+          <Badge className="bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300">
             Terlambat
           </Badge>
         )
       case "dikembalikan":
         return (
-          <Badge variant="outline" className="bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300">
+          <Badge className="bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300">
             Dikembalikan
           </Badge>
         )
       default:
-        return <Badge variant="outline">{status}</Badge>
+        return <Badge color="gray">{status}</Badge>
     }
   }
 
-  const formatDate = (dateString) => {
+  const formatDate = (dateString: string | null | undefined): string => {
     if (!dateString) return "-"
     return format(parseISO(dateString), "d MMMM yyyy", { locale: id })
   }
 
   // Filter returns based on search query
-  const filteredReturns = returns.filter(
-    (returnItem) =>
+  const filteredReturns = returns.filter((returnItem: ReturnItem): boolean =>
       returnItem.memberName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      returnItem.bookTitle.toLowerCase().includes(searchQuery.toLowerCase()),
-  )
+      returnItem.bookTitle.toLowerCase().includes(searchQuery.toLowerCase())
+  );
 
   return (
     <>
@@ -181,17 +191,17 @@ export default function ReturnDataTable() {
                 placeholder="Cari anggota atau buku..."
                 className="w-full pl-8"
                 value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSearchQuery(e.target.value)}
               />
             </div>
             <div className="flex items-center gap-2">
-              <Badge variant="outline" className="bg-blue-100 text-blue-800">
+              <Badge className="bg-blue-100 text-blue-800">
                 Dipinjam
               </Badge>
-              <Badge variant="outline" className="bg-red-100 text-red-800">
+              <Badge className="bg-red-100 text-red-800">
                 Terlambat
               </Badge>
-              <Badge variant="outline" className="bg-green-100 text-green-800">
+              <Badge className="bg-green-100 text-green-800">
                 Dikembalikan
               </Badge>
             </div>
@@ -211,7 +221,7 @@ export default function ReturnDataTable() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filteredReturns.map((returnItem, index) => (
+                {filteredReturns.map((returnItem: ReturnItem, index: number) => (
                   <TableRow key={returnItem.id}>
                     <TableCell>{index + 1}</TableCell>
                     <TableCell className="font-medium">{returnItem.memberName}</TableCell>

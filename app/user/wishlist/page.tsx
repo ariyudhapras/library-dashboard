@@ -104,14 +104,11 @@ export default function WishlistPage() {
 
   return (
     <div className="mx-auto px-4 py-8">
-      <div className="mx-auto rounded-xl shadow p-6 mb-12">
-        <div className="text-center">
-          <h1 className="text-5xl font-bold mb-4">Wishlist Saya</h1>
-          <p className="text-lg text-gray-700 dark:text-gray-400 font-semibold mt-2">
-            Kumpulan buku yang Anda simpan untuk dibaca nanti
-          </p>
-        </div>
-      </div>
+      <PageHeader
+        title="My Wishlist"
+        description="Kumpulan buku yang Anda simpan untuk dibaca nanti"
+        variant="centered"
+      />
 
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
         {wishlist.map((item) => (

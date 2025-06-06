@@ -2,19 +2,20 @@
 
 import Link from "next/link";
 import {
+  LayoutDashboard,
+  BookOpen,
+  Users,
+  MailQuestion,
+  ArchiveRestore,
+  FileText,
   Home,
-  Book,
-  Heart,
-  BookMarked,
-  Clock,
-  User,
   LibraryBig,
 } from "lucide-react";
 import { LogoutButton } from "@/components/logout-button";
 import { usePathname } from "next/navigation";
 import React from "react";
 
-interface UserSidebarContentProps {
+interface AdminSidebarContentProps {
   user?: {
     name?: string | null;
     role?: string;
@@ -24,43 +25,43 @@ interface UserSidebarContentProps {
   firstMenuRef?: React.RefObject<HTMLAnchorElement>;
 }
 
-export function UserSidebarContent({
+export function AdminSidebarContent({
   user,
   activePath,
   onNavClick,
   firstMenuRef,
-}: UserSidebarContentProps) {
+}: AdminSidebarContentProps) {
   const pathname = activePath || usePathname();
   const menu = [
     {
-      href: "/user/beranda",
-      label: "Homepage",
-      icon: <Home className="w-5 h-5 lg:w-7 lg:h-7" />,
+      href: "/admin/dashboard",
+      label: "Dashboard",
+      icon: <LayoutDashboard className="w-5 h-5 lg:w-7 lg:h-7" />,
     },
     {
-      href: "/user/katalog",
-      label: "Catalog",
-      icon: <Book className="w-5 h-5 lg:w-7 lg:h-7" />,
+      href: "/admin/books",
+      label: "Manajemen Buku",
+      icon: <BookOpen className="w-5 h-5 lg:w-7 lg:h-7" />,
     },
     {
-      href: "/user/wishlist",
-      label: "Wishlist",
-      icon: <Heart className="w-5 h-5 lg:w-7 lg:h-7" />,
+      href: "/admin/members",
+      label: "Manajemen Anggota",
+      icon: <Users className="w-5 h-5 lg:w-7 lg:h-7" />,
     },
     {
-      href: "/user/active-loans",
-      label: "Active Loans",
-      icon: <BookMarked className="w-5 h-5 lg:w-7 lg:h-7" />,
+      href: "/admin/requests",
+      label: "Permintaan Peminjaman",
+      icon: <MailQuestion className="w-5 h-5 lg:w-7 lg:h-7" />,
     },
     {
-      href: "/user/history",
-      label: "Loan History",
-      icon: <Clock className="w-5 h-5 lg:w-7 lg:h-7" />,
+      href: "/admin/returns",
+      label: "Pengembalian",
+      icon: <ArchiveRestore className="w-5 h-5 lg:w-7 lg:h-7" />,
     },
     {
-      href: "/user/profile",
-      label: "Profile",
-      icon: <User className="w-5 h-5 lg:w-7 lg:h-7" />,
+      href: "/admin/reports",
+      label: "Laporan",
+      icon: <FileText className="w-5 h-5 lg:w-7 lg:h-7" />,
     },
   ];
 
@@ -69,29 +70,14 @@ export function UserSidebarContent({
       {/* Header */}
       <div className="flex flex-col gap-2 items-center py-8 border-b border-[#23263A] mb-4">
         <span className="inline-block align-middle rounded-full bg-white p-1 shadow-md">
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            fill="none"
-            viewBox="0 0 24 24"
-            strokeWidth={1.5}
-            stroke="#2563eb"
-            className="w-10 h-10 lg:w-12 lg:h-12"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              d="M2.25 6.75V18a2.25 2.25 0 002.25 2.25h15.25M2.25 6.75A2.25 2.25 0 014.5 4.5h15.25v15.75M2.25 6.75h15.25m0 0V18a2.25 2.25 0 01-2.25 2.25H4.5"
-            />
-          </svg>
+          <LibraryBig className="w-10 h-10 lg:w-12 lg:h-12 text-blue-600" />
         </span>
         <h2 className="text-2xl lg:text-4xl font-extrabold tracking-tight text-white">
-          Digital Library
+          Admin Panel
         </h2>
-        {user?.name && (
-          <p className="text-sm lg:text-lg text-[#A0AEC0] lg:mt-1">
-            Selamat datang, {user.name}
-          </p>
-        )}
+        <p className="text-sm lg:text-lg text-[#A0AEC0] lg:mt-1">
+          Perpustakaan Digital
+        </p>
       </div>
       {/* Menu */}
       <nav className="space-y-1 px-3">
@@ -115,17 +101,6 @@ export function UserSidebarContent({
             {item.label}
           </Link>
         ))}
-        {user?.role === "admin" && (
-          <Link
-            href="/admin/dashboard"
-            onClick={onNavClick}
-            className="flex items-center px-4 py-3 mt-4 rounded-lg font-medium transition-all duration-200 text-base gap-3 cursor-pointer select-none text-blue-400 hover:bg-blue-900/30 hover:text-blue-200"
-            style={{ minHeight: 48 }}
-          >
-            <LibraryBig className="w-5 h-5" />
-            Admin Panel
-          </Link>
-        )}
         <div className="pt-4 mt-4 border-t border-[#23263A]">
           <LogoutButton
             variant="ghost"

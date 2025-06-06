@@ -1,15 +1,34 @@
-"use client"
+"use client";
 
-import { useState } from "react"
-import { format, parseISO } from "date-fns"
-import { id } from "date-fns/locale"
-import { Book, Calendar, Search } from "lucide-react"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { Badge } from "@/components/ui/badge"
-import { Input } from "@/components/ui/input"
-import { Button } from "@/components/ui/button"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { useState } from "react";
+import { format, parseISO } from "date-fns";
+import { id } from "date-fns/locale";
+import { Book, Calendar, Search } from "lucide-react";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 // Sample loan history data
 const sampleLoanHistory = [
@@ -19,7 +38,7 @@ const sampleLoanHistory = [
     requestDate: "2023-05-10",
     approvalDate: "2023-05-11",
     returnDate: "2023-05-25",
-    status: "dikembalikan", // returned
+    status: "RETURNED", // returned
   },
   {
     id: 2,
@@ -27,7 +46,7 @@ const sampleLoanHistory = [
     requestDate: "2023-06-05",
     approvalDate: "2023-06-06",
     returnDate: null,
-    status: "disetujui", // approved
+    status: "APPROVED", // approved
   },
   {
     id: 3,
@@ -35,7 +54,7 @@ const sampleLoanHistory = [
     requestDate: "2023-06-15",
     approvalDate: null,
     returnDate: null,
-    status: "diajukan", // requested
+    status: "PENDING", // requested
   },
   {
     id: 4,
@@ -43,7 +62,7 @@ const sampleLoanHistory = [
     requestDate: "2023-06-20",
     approvalDate: null,
     returnDate: null,
-    status: "ditolak", // rejected
+    status: "REJECTED", // rejected
   },
   {
     id: 5,
@@ -51,7 +70,7 @@ const sampleLoanHistory = [
     requestDate: "2023-07-01",
     approvalDate: "2023-07-02",
     returnDate: "2023-07-15",
-    status: "dikembalikan", // returned
+    status: "RETURNED", // returned
   },
   {
     id: 6,
@@ -69,56 +88,68 @@ const sampleLoanHistory = [
     returnDate: null,
     status: "diajukan", // requested
   },
-]
+];
 
 export default function LoanHistoryTable() {
-  const [searchQuery, setSearchQuery] = useState("")
-  const [statusFilter, setStatusFilter] = useState("all")
+  const [searchQuery, setSearchQuery] = useState("");
+  const [statusFilter, setStatusFilter] = useState("all");
 
   // Format date to Indonesian format
-  const formatDate = (dateString) => {
-    if (!dateString) return "-"
-    return format(parseISO(dateString), "d MMMM yyyy", { locale: id })
-  }
+  const formatDate = (dateString: string) => {
+    if (!dateString) return "-";
+    return format(parseISO(dateString), "d MMMM yyyy", { locale: id });
+  };
 
   // Get status badge with appropriate color
-  const getStatusBadge = (status) => {
+  const getStatusBadge = (status: string) => {
     switch (status) {
       case "diajukan":
         return (
-          <Badge variant="outline" className="bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300">
+          <Badge
+            color="yellow"
+            className="bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300"
+          >
             Diajukan
           </Badge>
-        )
+        );
       case "disetujui":
         return (
-          <Badge variant="outline" className="bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300">
+          <Badge
+            color="green"
+            className="bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300"
+          >
             Disetujui
           </Badge>
-        )
+        );
       case "ditolak":
         return (
-          <Badge variant="outline" className="bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300">
+          <Badge
+            color="red"
+            className="bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300"
+          >
             Ditolak
           </Badge>
-        )
+        );
       case "dikembalikan":
         return (
-          <Badge variant="outline" className="bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300">
+          <Badge
+            color="blue"
+            className="bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300"
+          >
             Dikembalikan
           </Badge>
-        )
+        );
       default:
-        return <Badge variant="outline">{status}</Badge>
+        return <Badge color="gray">{status}</Badge>;
     }
-  }
+  };
 
   // Filter loan history based on search query and status filter
   const filteredHistory = sampleLoanHistory.filter(
     (item) =>
       (statusFilter === "all" || item.status === statusFilter) &&
-      item.bookTitle.toLowerCase().includes(searchQuery.toLowerCase()),
-  )
+      item.bookTitle.toLowerCase().includes(searchQuery.toLowerCase())
+  );
 
   return (
     <Card className="border shadow-sm">
@@ -144,19 +175,19 @@ export default function LoanHistoryTable() {
                 <SelectValue placeholder="Filter status" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">Semua Status</SelectItem>
-                <SelectItem value="diajukan">Diajukan</SelectItem>
-                <SelectItem value="disetujui">Disetujui</SelectItem>
-                <SelectItem value="ditolak">Ditolak</SelectItem>
-                <SelectItem value="dikembalikan">Dikembalikan</SelectItem>
+                <SelectItem value="all">All Status</SelectItem>
+                <SelectItem value="diajukan">Requested</SelectItem>
+                <SelectItem value="disetujui">Approved</SelectItem>
+                <SelectItem value="ditolak">Rejected</SelectItem>
+                <SelectItem value="dikembalikan">Returned</SelectItem>
               </SelectContent>
             </Select>
             <Button
               variant="outline"
               size="icon"
               onClick={() => {
-                setSearchQuery("")
-                setStatusFilter("all")
+                setSearchQuery("");
+                setStatusFilter("all");
               }}
               title="Reset filter"
             >
@@ -171,9 +202,15 @@ export default function LoanHistoryTable() {
               <TableHeader>
                 <TableRow>
                   <TableHead>Judul Buku</TableHead>
-                  <TableHead className="hidden md:table-cell">Tanggal Pengajuan</TableHead>
-                  <TableHead className="hidden md:table-cell">Tanggal Disetujui</TableHead>
-                  <TableHead className="hidden md:table-cell">Tanggal Kembali</TableHead>
+                  <TableHead className="hidden md:table-cell">
+                    Tanggal Pengajuan
+                  </TableHead>
+                  <TableHead className="hidden md:table-cell">
+                    Tanggal Disetujui
+                  </TableHead>
+                  <TableHead className="hidden md:table-cell">
+                    Tanggal Kembali
+                  </TableHead>
                   <TableHead>Status</TableHead>
                 </TableRow>
               </TableHeader>
@@ -181,10 +218,18 @@ export default function LoanHistoryTable() {
                 {filteredHistory.length > 0 ? (
                   filteredHistory.map((item) => (
                     <TableRow key={item.id}>
-                      <TableCell className="font-medium">{item.bookTitle}</TableCell>
-                      <TableCell className="hidden md:table-cell">{formatDate(item.requestDate)}</TableCell>
-                      <TableCell className="hidden md:table-cell">{formatDate(item.approvalDate)}</TableCell>
-                      <TableCell className="hidden md:table-cell">{formatDate(item.returnDate)}</TableCell>
+                      <TableCell className="font-medium">
+                        {item.bookTitle}
+                      </TableCell>
+                      <TableCell className="hidden md:table-cell">
+                        {formatDate(item.requestDate || "")}
+                      </TableCell>
+                      <TableCell className="hidden md:table-cell">
+                        {formatDate(item.approvalDate || "")}
+                      </TableCell>
+                      <TableCell className="hidden md:table-cell">
+                        {formatDate(item.returnDate || "")}
+                      </TableCell>
                       <TableCell>{getStatusBadge(item.status)}</TableCell>
                     </TableRow>
                   ))
@@ -193,14 +238,16 @@ export default function LoanHistoryTable() {
                     <TableCell colSpan={5} className="h-24 text-center">
                       <div className="flex flex-col items-center justify-center gap-2">
                         <Book className="h-8 w-8 text-muted-foreground" />
-                        <p className="text-sm text-muted-foreground">Tidak ada riwayat peminjaman yang ditemukan</p>
+                        <p className="text-sm text-muted-foreground">
+                          Tidak ada riwayat peminjaman yang ditemukan
+                        </p>
                         {(searchQuery || statusFilter !== "all") && (
                           <Button
                             variant="outline"
                             size="sm"
                             onClick={() => {
-                              setSearchQuery("")
-                              setStatusFilter("all")
+                              setSearchQuery("");
+                              setStatusFilter("all");
                             }}
                           >
                             Reset Filter
@@ -227,16 +274,22 @@ export default function LoanHistoryTable() {
                   </div>
                   <div className="space-y-1 text-sm">
                     <div className="flex justify-between">
-                      <span className="text-muted-foreground">Tanggal Pengajuan:</span>
+                      <span className="text-muted-foreground">
+                        Tanggal Pengajuan:
+                      </span>
                       <span>{formatDate(item.requestDate)}</span>
                     </div>
                     <div className="flex justify-between">
-                      <span className="text-muted-foreground">Tanggal Disetujui:</span>
-                      <span>{formatDate(item.approvalDate)}</span>
+                      <span className="text-muted-foreground">
+                        Tanggal Disetujui:
+                      </span>
+                      <span>{formatDate(item.approvalDate || "")}</span>
                     </div>
                     <div className="flex justify-between">
-                      <span className="text-muted-foreground">Tanggal Kembali:</span>
-                      <span>{formatDate(item.returnDate)}</span>
+                      <span className="text-muted-foreground">
+                        Tanggal Kembali:
+                      </span>
+                      <span>{formatDate(item.returnDate || "")}</span>
                     </div>
                   </div>
                 </CardContent>
@@ -245,14 +298,16 @@ export default function LoanHistoryTable() {
           ) : (
             <div className="flex flex-col items-center justify-center gap-2 rounded-md border p-8 text-center">
               <Book className="h-8 w-8 text-muted-foreground" />
-              <p className="text-sm text-muted-foreground">Tidak ada riwayat peminjaman yang ditemukan</p>
+              <p className="text-sm text-muted-foreground">
+                Tidak ada riwayat peminjaman yang ditemukan
+              </p>
               {(searchQuery || statusFilter !== "all") && (
                 <Button
                   variant="outline"
                   size="sm"
                   onClick={() => {
-                    setSearchQuery("")
-                    setStatusFilter("all")
+                    setSearchQuery("");
+                    setStatusFilter("all");
                   }}
                 >
                   Reset Filter
@@ -263,5 +318,5 @@ export default function LoanHistoryTable() {
         </div>
       </CardContent>
     </Card>
-  )
+  );
 }

@@ -190,8 +190,9 @@ export default function BerandaPage() {
             Overview of your library activities
           </p>
         </div>
-        <div className="mt-4 sm:mt-0 sm:absolute sm:right-4 sm:top-1/2 sm:-translate-y-1/2">
-          <div className="rounded-full border-2 sm:border-4 border-primary-500 p-0.5 sm:p-1 shadow">
+        {/* Only show profile button in overview for desktop (sm: and up) */}
+        <div className="hidden sm:block mt-4 sm:mt-0 sm:absolute sm:right-4 sm:top-1/2 sm:-translate-y-1/2">
+          <div className="flex justify-center sm:justify-end items-center gap-2">
             <AvatarDropdown />
           </div>
         </div>
@@ -364,7 +365,7 @@ export default function BerandaPage() {
                             <span className="truncate">
                               Due:{" "}
                               {new Date(loan.returnDate).toLocaleDateString(
-                                "id-ID",
+                                "en-US",
                                 {
                                   day: "numeric",
                                   month: "short",
@@ -377,10 +378,10 @@ export default function BerandaPage() {
                             <span className="inline-flex items-center justify-center sm:justify-start gap-1 text-red-600 font-medium">
                               <AlertCircle className="w-4 h-4 sm:w-5 sm:h-5 flex-shrink-0" />
                               <span className="truncate">
-                                Denda:{" "}
-                                {new Intl.NumberFormat("id-ID", {
+                                Fine:{" "}
+                                {new Intl.NumberFormat("en-US", {
                                   style: "currency",
-                                  currency: "IDR",
+                                  currency: "USD",
                                   minimumFractionDigits: 0,
                                 }).format(
                                   Math.ceil(
@@ -464,7 +465,7 @@ export default function BerandaPage() {
                             <span className="truncate">
                               Borrowed:{" "}
                               {new Date(loan.borrowDate).toLocaleDateString(
-                                "id-ID",
+                                "en-US",
                                 {
                                   day: "numeric",
                                   month: "short",
@@ -478,7 +479,7 @@ export default function BerandaPage() {
                             <span className="truncate">
                               Returned:{" "}
                               {new Date(loan.returnDate).toLocaleDateString(
-                                "id-ID",
+                                "en-US",
                                 {
                                   day: "numeric",
                                   month: "short",
@@ -536,7 +537,7 @@ export default function BerandaPage() {
       <DashboardSection>
         <DashboardHeader className="text-center bg-gray-100 rounded-t-lg sm:rounded-t-xl">
           <h2 className="text-xl sm:text-2xl lg:text-3xl font-semibold text-primary-900 dark:text-primary-50 p-2 sm:p-2">
-            Popular Books 🔥
+            Popular Books
           </h2>
         </DashboardHeader>
         <DashboardContent>

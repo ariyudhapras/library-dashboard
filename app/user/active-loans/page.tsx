@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { PageHeader } from "@/components/page-header";
@@ -67,35 +67,34 @@ export default function ActiveLoansPage() {
   const [returnDialogOpen, setReturnDialogOpen] = useState(false);
   const [selectedLoan, setSelectedLoan] = useState<BookLoan | null>(null);
 
-  useEffect(() => {
-    // Get the tab from the URL if it exists
-    const url = new URL(window.location.href);
-    const tabParam = url.searchParams.get("tab");
-    if (tabParam) {
-      setActiveTab(tabParam);
-    }
-
-    fetchBookLoans();
-  }, [session]);
-
-  const fetchBookLoans = async () => {
-    if (!session?.user?.id) return;
-
+  const handleCancelLoan = async (loanId: number) => {
     try {
-      setIsLoading(true);
-      const response = await fetch(`/api/bookloans?userId=${session.user.id}`);
+      const res = await fetch(`/api/bookloans/cancel`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: loanId }),
+      });
+      if (!res.ok) throw new Error("Gagal membatalkan peminjaman");
+      toast.success("Peminjaman berhasil dibatalkan");
+      fetchBookLoans(); // Refresh data
+    } catch (err) {
+      toast.error("Terjadi kesalahan saat membatalkan");
+      console.error(err);
+    }
+  };
 
+  const fetchBookLoans = useCallback(async () => {
+    if (!session?.user?.id) return;
+    setIsLoading(true);
+    try {
+      const response = await fetch(`/api/bookloans?userId=${session.user.id}`);
       if (!response.ok) {
         throw new Error("Failed to fetch book loans");
       }
-
       const data = await response.json();
-
-      // Filter loans to only show active ones (PENDING, APPROVED, LATE)
       const activeLoans = data.filter((loan: BookLoan) =>
         ["PENDING", "APPROVED", "LATE"].includes(loan.status)
       );
-
       setBookLoans(activeLoans);
     } catch (error) {
       console.error("Error fetching book loans:", error);
@@ -103,83 +102,53 @@ export default function ActiveLoansPage() {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [session]); 
 
-  // Function to get status badge
+  useEffect(() => {
+    const url = new URL(window.location.href);
+    const tabParam = url.searchParams.get("tab");
+    if (tabParam) {
+      setActiveTab(tabParam);
+    }
+    fetchBookLoans();
+  }, [fetchBookLoans, setActiveTab]);
+
   const getStatusBadge = (status: string) => {
     switch (status) {
       case "PENDING":
-        return (
-          <Badge color="yellow" className="border border-yellow-200">
-            Menunggu
-          </Badge>
-        );
+        return <Badge className="bg-yellow-500 hover:bg-yellow-600">Menunggu</Badge>;
       case "APPROVED":
-        return (
-          <Badge color="green" className="border border-green-200">
-            Disetujui
-          </Badge>
-        );
+        return <Badge className="bg-green-500 hover:bg-green-600">Disetujui</Badge>;
       case "REJECTED":
-        return (
-          <Badge color="red" className="border border-red-200">
-            Ditolak
-          </Badge>
-        );
+        return <Badge className="bg-red-500 hover:bg-red-600">Ditolak</Badge>;
       case "RETURNED":
-        return (
-          <Badge color="blue" className="border border-blue-200">
-            Dikembalikan
-          </Badge>
-        );
+        return <Badge className="bg-blue-500 hover:bg-blue-600">Dikembalikan</Badge>;
       case "LATE":
-        return (
-          <Badge color="gray" className="border border-purple-200">
-            Terlambat
-          </Badge>
-        );
+        return <Badge className="bg-purple-500 hover:bg-purple-600">Terlambat</Badge>;
       default:
         return <Badge>{status}</Badge>;
     }
   };
 
-  // Handle book return
   const handleReturn = async () => {
     if (!selectedLoan) return;
-
+    setIsReturning(true);
     try {
-      setIsReturning(true);
-
       const today = new Date().toISOString();
-
-      // Determine if the book is being returned late
-      const returnDate = new Date(selectedLoan.returnDate);
-      const actualReturnDate = new Date();
-      const isLate = actualReturnDate > returnDate;
-
-      // Calculate the new status
-      let newStatus = "RETURNED";
-
       const response = await fetch("/api/bookloans/return", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           id: selectedLoan.id,
           actualReturnDate: today,
-          status: newStatus,
+          status: "RETURNED", 
         }),
       });
-
       if (!response.ok) {
         throw new Error("Failed to return book");
       }
-
       toast.success("Buku berhasil dikembalikan");
-
-      // Refresh the book loans data
-      fetchBookLoans();
+      fetchBookLoans(); // Refresh data
     } catch (error) {
       console.error("Error returning book:", error);
       toast.error("Gagal mengembalikan buku");
@@ -190,31 +159,23 @@ export default function ActiveLoansPage() {
     }
   };
 
-  // Function to open return confirmation dialog
   const openReturnDialog = (loan: BookLoan) => {
     setSelectedLoan(loan);
     setReturnDialogOpen(true);
   };
 
-  // Filter loans based on active tab
-  const filteredLoans = bookLoans.filter((loan) => {
+  const filteredLoans = bookLoans.filter((loan: BookLoan) => {
     if (activeTab === "all") return true;
     return loan.status === activeTab;
   });
 
   return (
     <div className="w-full mx-auto flex flex-col gap-6">
-      {/* Judul dan deskripsi dipindah ke bawah */}
-
-      <div className="w-full mx-auto rounded-xl shadow p-6 mb-12">
-        <div className="text-center">
-          <h1 className="text-4xl font-bold mb-2">Daftar Peminjaman</h1>
-          <p className="text-base text-muted-foreground">
-            Kelola dan pantau peminjaman buku Anda
-          </p>
-        </div>
-      </div>
-
+      <PageHeader
+        title="Daftar Peminjaman"
+        description="Kelola dan pantau peminjaman buku Anda"
+        variant="centered"
+      />
       <Card>
         <CardHeader>
           <CardTitle></CardTitle>
@@ -231,7 +192,6 @@ export default function ActiveLoansPage() {
               <TabsTrigger value="APPROVED">Disetujui</TabsTrigger>
               <TabsTrigger value="LATE">Terlambat</TabsTrigger>
             </TabsList>
-
             <TabsContent value={activeTab}>
               {isLoading ? (
                 <div className="flex justify-center items-center p-8">
@@ -305,6 +265,16 @@ export default function ActiveLoansPage() {
                                 Kembalikan
                               </Button>
                             )}
+                            {loan.status === "PENDING" && (
+                              <Button
+                                variant="destructive"
+                                size="sm"
+                                onClick={() => handleCancelLoan(loan.id)}
+                                className="ml-2"
+                              >
+                                Batalkan
+                              </Button>
+                            )}
                           </TableCell>
                         </TableRow>
                       ))}
@@ -316,8 +286,6 @@ export default function ActiveLoansPage() {
           </Tabs>
         </CardContent>
       </Card>
-
-      {/* Return Confirmation Dialog */}
       <AlertDialog open={returnDialogOpen} onOpenChange={setReturnDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
@@ -352,8 +320,6 @@ export default function ActiveLoansPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-
-      {/* Visual cue scroll kanan di mobile */}
       <div className="block md:hidden text-xs text-center text-muted-foreground mt-2 select-none">
         <span className="inline-flex items-center gap-1">
           <svg
@@ -372,3 +338,4 @@ export default function ActiveLoansPage() {
     </div>
   );
 }
+

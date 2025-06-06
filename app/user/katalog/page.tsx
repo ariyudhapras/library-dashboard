@@ -156,10 +156,11 @@ export default function KatalogPage() {
               loan.status === "PENDING" || loan.status === "APPROVED"
           )
           .map((loan: any) => ({
-            bookId: loan.bookId,
+            bookId: loan.book.id,
             status: loan.status,
           }));
 
+        console.log("Active loans", active);
         setActiveLoans(active);
       } catch (error) {
         console.error("Error fetching active loans:", error);
@@ -199,6 +200,32 @@ export default function KatalogPage() {
     };
     fetchWishlist();
   }, [session, books]);
+
+  // Toggle wishlist for a book
+  const handleToggleWishlist = async (bookId: number) => {
+    // Optimistically update UI
+    setWishlistBookIds((prev) => {
+      if (prev.includes(bookId)) {
+        // Remove from wishlist
+        return prev.filter((id) => id !== bookId);
+      } else {
+        // Add to wishlist
+        return [...prev, bookId];
+      }
+    });
+    // Optionally sync with backend
+    try {
+      const inWishlist = wishlistBookIds.includes(bookId);
+      const method = inWishlist ? 'DELETE' : 'POST';
+      await fetch(`/api/wishlist`, {
+        method,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ bookId }),
+      });
+    } catch (error) {
+      // Optionally revert optimistic update or show error
+    }
+  };
 
   // Filter and sort books
   useEffect(() => {
@@ -293,14 +320,11 @@ export default function KatalogPage() {
 
   return (
     <div className="mx-auto px-4 py-8">
-      <div className="mx-auto rounded-xl shadow p-6 mb-12">
-        <div className="text-center">
-          <h1 className="text-5xl font-bold mb-4">Books Collection</h1>
-          <p className="text-lg text-gray-700 dark:text-gray-400 font-semibold mt-2">
-            Explore your favorite books and start borrowing today!
-          </p>
-        </div>
-      </div>
+      <PageHeader
+        title="Books Collection"
+        description="Explore your favorite books and start borrowing today!"
+        variant="centered"
+      />
 
       {/* Search, Sort, and Filter Bar */}
       <div className="mb-8 space-y-4">
@@ -310,7 +334,7 @@ export default function KatalogPage() {
             <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
             <Input
               type="search"
-              placeholder="Cari judul atau penulis..."
+              placeholder="Find books or authors..."
               className="pl-9 text-lg"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
@@ -321,11 +345,11 @@ export default function KatalogPage() {
               <SelectValue placeholder="Urutkan" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="newest">Terbaru</SelectItem>
-              <SelectItem value="oldest">Terlama</SelectItem>
+              <SelectItem value="newest">Newest</SelectItem>
+              <SelectItem value="oldest">Oldest</SelectItem>
               <SelectItem value="az">A-Z</SelectItem>
               <SelectItem value="za">Z-A</SelectItem>
-              <SelectItem value="popular">Terpopuler</SelectItem>
+              <SelectItem value="popular">Popular</SelectItem>
             </SelectContent>
           </Select>
           <Sheet open={isFilterOpen} onOpenChange={setIsFilterOpen}>
@@ -355,7 +379,7 @@ export default function KatalogPage() {
                         <SelectValue placeholder="Pilih Kategori" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="all">Semua Kategori</SelectItem>
+                        <SelectItem value="all">All Categories</SelectItem>
                         {categories.map((category) => (
                           <SelectItem
                             key={category ?? ""}
@@ -376,7 +400,7 @@ export default function KatalogPage() {
                         <SelectValue placeholder="Pilih Tahun" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="all">Semua Tahun</SelectItem>
+                        <SelectItem value="all">All Years</SelectItem>
                         {years.map((year) => (
                           <SelectItem
                             key={year?.toString() ?? ""}
@@ -400,9 +424,9 @@ export default function KatalogPage() {
                         <SelectValue placeholder="Pilih Status" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="all">Semua Status</SelectItem>
-                        <SelectItem value="available">Tersedia</SelectItem>
-                        <SelectItem value="borrowed">Sudah Dipinjam</SelectItem>
+                        <SelectItem value="all">All Status</SelectItem>
+                        <SelectItem value="available">Available</SelectItem>
+                        <SelectItem value="borrowed">Borrowed</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
@@ -428,7 +452,7 @@ export default function KatalogPage() {
             <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
             <Input
               type="search"
-              placeholder="Cari judul atau penulis..."
+              placeholder="Find books or authors..."
               className="pl-9"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
@@ -441,11 +465,11 @@ export default function KatalogPage() {
               <SelectValue placeholder="Urutkan" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="newest">Terbaru</SelectItem>
-              <SelectItem value="oldest">Terlama</SelectItem>
+              <SelectItem value="newest">Newest</SelectItem>
+              <SelectItem value="oldest">Oldest</SelectItem>
               <SelectItem value="az">A-Z</SelectItem>
               <SelectItem value="za">Z-A</SelectItem>
-              <SelectItem value="popular">Terpopuler</SelectItem>
+              <SelectItem value="popular">Popular</SelectItem>
             </SelectContent>
           </Select>
 
@@ -456,7 +480,7 @@ export default function KatalogPage() {
                 <SelectValue placeholder="Kategori" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">Semua Kategori</SelectItem>
+                <SelectItem value="all">All Categories</SelectItem>
                 {categories.map((category) => (
                   <SelectItem key={category ?? ""} value={category ?? ""}>
                     {category ?? "Tanpa Kategori"}
@@ -470,7 +494,7 @@ export default function KatalogPage() {
                 <SelectValue placeholder="Tahun Terbit" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">Semua Tahun</SelectItem>
+                <SelectItem value="all">All Years</SelectItem>
                 {years.map((year) => (
                   <SelectItem
                     key={year?.toString() ?? ""}
@@ -487,9 +511,9 @@ export default function KatalogPage() {
                 <SelectValue placeholder="Status" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">Semua Status</SelectItem>
-                <SelectItem value="available">Tersedia</SelectItem>
-                <SelectItem value="borrowed">Sudah Dipinjam</SelectItem>
+                <SelectItem value="all">All Status</SelectItem>
+                <SelectItem value="available">Available</SelectItem>
+                <SelectItem value="borrowed">Borrowed</SelectItem>
               </SelectContent>
             </Select>
 
@@ -529,7 +553,9 @@ export default function KatalogPage() {
               key={book.id}
               book={book}
               onRequestLoan={handleRequestLoan}
+              isBorrowed={activeLoans.some((loan) => loan.bookId === book.id)}
               isWishlisted={wishlistBookIds.includes(book.id)}
+              onToggleWishlist={handleToggleWishlist}
             />
           ))}
         </div>

@@ -20,8 +20,20 @@ import { Input } from "@/components/ui/input"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 
+interface RequestItem {
+  id: number;
+  memberName: string;
+  memberId: string;
+  memberEmail: string;
+  bookTitle: string;
+  bookId: string;
+  bookAuthor: string;
+  requestDate: string;
+  status: "diajukan" | "disetujui" | "ditolak";
+}
+
 // Sample request data
-const initialRequests = [
+const initialRequests: RequestItem[] = [
   {
     id: 1,
     memberName: "Budi Santoso",
@@ -79,36 +91,37 @@ const initialRequests = [
   },
 ]
 
-export default function RequestDataTable() {
-  const [requests, setRequests] = useState(initialRequests)
+export default function RequestDataTable(): JSX.Element {
+  const [requests, setRequests] = useState<RequestItem[]>(initialRequests)
   const [isApproveDialogOpen, setIsApproveDialogOpen] = useState(false)
   const [isRejectDialogOpen, setIsRejectDialogOpen] = useState(false)
   const [isDetailDialogOpen, setIsDetailDialogOpen] = useState(false)
-  const [selectedRequest, setSelectedRequest] = useState(null)
+  const [selectedRequest, setSelectedRequest] = useState<RequestItem | null>(null)
   const [searchQuery, setSearchQuery] = useState("")
   const [activeTab, setActiveTab] = useState("all")
 
-  const handleApprove = (request) => {
+  const handleApprove = (request: RequestItem): void => {
     setSelectedRequest(request)
     setIsApproveDialogOpen(true)
   }
 
-  const handleReject = (request) => {
+  const handleReject = (request: RequestItem): void => {
     setSelectedRequest(request)
     setIsRejectDialogOpen(true)
   }
 
-  const handleDetail = (request) => {
+  const handleViewDetails = (request: RequestItem): void => {
     setSelectedRequest(request)
     setIsDetailDialogOpen(true)
   }
 
-  const confirmApprove = () => {
-    const updatedRequests = requests.map((request) => {
+  const confirmApprove = (): void => {
+    if (!selectedRequest) return;
+    const updatedRequests = requests.map((request: RequestItem) => {
       if (request.id === selectedRequest.id) {
         return {
           ...request,
-          status: "disetujui",
+          status: "disetujui" as const,
         }
       }
       return request
@@ -117,12 +130,13 @@ export default function RequestDataTable() {
     setIsApproveDialogOpen(false)
   }
 
-  const confirmReject = () => {
-    const updatedRequests = requests.map((request) => {
+  const confirmReject = (): void => {
+    if (!selectedRequest) return;
+    const updatedRequests = requests.map((request: RequestItem) => {
       if (request.id === selectedRequest.id) {
         return {
           ...request,
-          status: "ditolak",
+          status: "ditolak" as const,
         }
       }
       return request
@@ -131,45 +145,46 @@ export default function RequestDataTable() {
     setIsRejectDialogOpen(false)
   }
 
-  const getStatusBadge = (status) => {
+  const getStatusBadge = (status: RequestItem['status']): JSX.Element => {
     switch (status) {
       case "diajukan":
         return (
-          <Badge variant="outline" className="bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300">
+          <Badge className="bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300">
             Diajukan
           </Badge>
         )
       case "disetujui":
         return (
-          <Badge variant="outline" className="bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300">
+          <Badge className="bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300">
             Disetujui
           </Badge>
         )
       case "ditolak":
         return (
-          <Badge variant="outline" className="bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300">
+          <Badge className="bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300">
             Ditolak
           </Badge>
         )
       default:
-        return <Badge variant="outline">{status}</Badge>
+        return <Badge color="gray">{status}</Badge>
     }
   }
 
-  const formatDate = (dateString) => {
+  const formatDate = (dateString: string): string => {
     return format(parseISO(dateString), "d MMMM yyyy", { locale: id })
   }
 
   // Filter requests based on search query and active tab
-  const filteredRequests = requests.filter(
-    (request) =>
-      (activeTab === "all" ||
-        (activeTab === "pending" && request.status === "diajukan") ||
-        (activeTab === "approved" && request.status === "disetujui") ||
-        (activeTab === "rejected" && request.status === "ditolak")) &&
-      (request.memberName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        request.bookTitle.toLowerCase().includes(searchQuery.toLowerCase())),
-  )
+  const filteredRequests = requests.filter((request: RequestItem): boolean => {
+    const tabCondition = activeTab === "all" ||
+                         (activeTab === "pending" && request.status === "diajukan") ||
+                         (activeTab === "approved" && request.status === "disetujui") ||
+                         (activeTab === "rejected" && request.status === "ditolak");
+    const searchCondition = request.memberName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                            request.bookTitle.toLowerCase().includes(searchQuery.toLowerCase());
+    return tabCondition && searchCondition;
+  }
+  );
 
   return (
     <>
@@ -187,10 +202,10 @@ export default function RequestDataTable() {
                 placeholder="Cari anggota atau buku..."
                 className="w-full pl-8"
                 value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSearchQuery(e.target.value)}
               />
             </div>
-            <Tabs defaultValue="all" className="w-full sm:w-auto" onValueChange={setActiveTab}>
+            <Tabs defaultValue="all" className="w-full sm:w-auto" onValueChange={(value: string) => setActiveTab(value)}>
               <TabsList>
                 <TabsTrigger value="all">Semua</TabsTrigger>
                 <TabsTrigger value="pending">Diajukan</TabsTrigger>
@@ -213,7 +228,7 @@ export default function RequestDataTable() {
               </TableHeader>
               <TableBody>
                 {filteredRequests.length > 0 ? (
-                  filteredRequests.map((request, index) => (
+                  filteredRequests.map((request: RequestItem, index: number) => (
                     <TableRow key={request.id}>
                       <TableCell>{index + 1}</TableCell>
                       <TableCell className="font-medium">{request.memberName}</TableCell>
@@ -248,7 +263,7 @@ export default function RequestDataTable() {
                             variant="outline"
                             size="icon"
                             className="h-8 w-8"
-                            onClick={() => handleDetail(request)}
+                            onClick={() => handleViewDetails(request)}
                           >
                             <Eye className="h-4 w-4" />
                             <span className="sr-only">Detail</span>

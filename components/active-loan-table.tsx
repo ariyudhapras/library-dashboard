@@ -1,108 +1,141 @@
-"use client"
+"use client";
 
-import { useState, useEffect } from "react"
-import { format, parseISO } from "date-fns"
-import { id } from "date-fns/locale"
-import { Book, Search, Loader2 } from "lucide-react"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { Badge } from "@/components/ui/badge"
-import { Input } from "@/components/ui/input"
-import { Button } from "@/components/ui/button"
-import { useSession } from "next-auth/react"
-import { toast } from "sonner"
+import { useState, useEffect } from "react";
+import { format, parseISO } from "date-fns";
+import { id } from "date-fns/locale";
+import { Book, Search, Loader2 } from "lucide-react";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { useSession } from "next-auth/react";
+import { toast } from "sonner";
 
 // Book loan type
 type BookLoan = {
-  id: number
-  userId: number
-  bookId: number
-  borrowDate: string
-  returnDate: string
-  actualReturnDate: string | null
-  status: string
-  notes: string | null
-  createdAt: string
-  updatedAt: string
+  id: number;
+  userId: number;
+  bookId: number;
+  borrowDate: string;
+  returnDate: string;
+  actualReturnDate: string | null;
+  status: string;
+  notes: string | null;
+  createdAt: string;
+  updatedAt: string;
   book: {
-    id: number
-    title: string
-    author: string
-    coverImage: string | null
-    stock: number
-  }
+    id: number;
+    title: string;
+    author: string;
+    coverImage: string | null;
+    stock: number;
+  };
   user: {
-    id: number
-    name: string
-    email: string
-  }
-}
+    id: number;
+    name: string;
+    email: string;
+  };
+};
 
 export default function ActiveLoanTable() {
-  const { data: session } = useSession()
-  const [searchQuery, setSearchQuery] = useState("")
-  const [activeLoans, setActiveLoans] = useState<BookLoan[]>([])
-  const [isLoading, setIsLoading] = useState(true)
+  const { data: session } = useSession();
+  const [searchQuery, setSearchQuery] = useState("");
+  const [activeLoans, setActiveLoans] = useState<BookLoan[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     const fetchActiveLoans = async () => {
-      if (!session?.user?.id) return
+      if (!session?.user?.id) return;
 
       try {
-        setIsLoading(true)
-        const response = await fetch(`/api/bookloans?userId=${session.user.id}`)
-        
+        setIsLoading(true);
+        const response = await fetch(
+          `/api/bookloans?userId=${session.user.id}`
+        );
+
         if (!response.ok) {
-          throw new Error('Failed to fetch book loans')
+          throw new Error("Failed to fetch book loans");
         }
-        
-        const data = await response.json()
-        
+
+        const data = await response.json();
+
         // Filter out only active loans (not returned or rejected)
-        const activeLoans = data.filter((loan: BookLoan) => 
-          loan.status !== 'RETURNED' && 
-          loan.status !== 'REJECTED' &&
-          loan.status !== 'VERIFIED_RETURNED'
-        )
-        
-        setActiveLoans(activeLoans)
+        const activeLoans = data.filter(
+          (loan: BookLoan) =>
+            loan.status !== "RETURNED" &&
+            loan.status !== "REJECTED" &&
+            loan.status !== "VERIFIED_RETURNED"
+        );
+
+        setActiveLoans(activeLoans);
       } catch (error) {
-        console.error('Error fetching active loans:', error)
-        toast.error('Gagal memuat data peminjaman aktif')
+        console.error("Error fetching active loans:", error);
+        toast.error("Gagal memuat data peminjaman aktif");
       } finally {
-        setIsLoading(false)
+        setIsLoading(false);
       }
-    }
+    };
 
     if (session?.user?.id) {
-      fetchActiveLoans()
+      fetchActiveLoans();
     }
-  }, [session])
+  }, [session]);
 
   // Filter loans based on search query
-  const filteredLoans = activeLoans.filter((loan) =>
-    loan.book.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    loan.book.author.toLowerCase().includes(searchQuery.toLowerCase())
-  )
+  const filteredLoans = activeLoans.filter(
+    (loan) =>
+      loan.book.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      loan.book.author.toLowerCase().includes(searchQuery.toLowerCase())
+  );
 
   // Format date to Indonesian locale
   const formatDate = (dateString: string) => {
-    return format(parseISO(dateString), "d MMMM yyyy", { locale: id })
-  }
+    return format(parseISO(dateString), "d MMMM yyyy", { locale: id });
+  };
 
   // Get status badge
   const getStatusBadge = (status: string) => {
     switch (status) {
       case "PENDING":
-        return <Badge variant="outline" className="bg-yellow-50 text-yellow-700 border-yellow-200">Menunggu</Badge>
+        return (
+          <Badge className="bg-yellow-50 text-yellow-700 border-yellow-200">
+            Menunggu
+          </Badge>
+        );
       case "APPROVED":
-        return <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">Disetujui</Badge>
+        return (
+          <Badge className="bg-green-50 text-green-700 border-green-200">
+            Disetujui
+          </Badge>
+        );
       case "LATE":
-        return <Badge variant="outline" className="bg-red-50 text-red-700 border-red-200">Terlambat</Badge>
+        return (
+          <Badge className="bg-red-50 text-red-700 border-red-200">
+            Terlambat
+          </Badge>
+        );
       default:
-        return <Badge variant="outline">{status}</Badge>
+        return (
+          <Badge className="bg-gray-50 text-gray-700 border-gray-200">
+            {status}
+          </Badge>
+        );
     }
-  }
+  };
 
   return (
     <Card className="border shadow-sm">
@@ -151,14 +184,16 @@ export default function ActiveLoanTable() {
                             <div className="flex items-start gap-3">
                               <div className="h-12 w-9 bg-muted rounded overflow-hidden flex-shrink-0">
                                 {loan.book.coverImage && (
-                                  <img 
-                                    src={loan.book.coverImage} 
+                                  <img
+                                    src={loan.book.coverImage}
                                     alt={loan.book.title}
                                     className="h-full w-full object-cover"
                                   />
                                 )}
                               </div>
-                              <div className="font-medium">{loan.book.title}</div>
+                              <div className="font-medium">
+                                {loan.book.title}
+                              </div>
                             </div>
                           </TableCell>
                           <TableCell>{loan.book.author}</TableCell>
@@ -172,7 +207,9 @@ export default function ActiveLoanTable() {
                         <TableCell colSpan={5} className="h-24 text-center">
                           <div className="flex flex-col items-center justify-center gap-2">
                             <Book className="h-8 w-8 text-muted-foreground" />
-                            <p className="text-sm text-muted-foreground">Tidak ada peminjaman aktif</p>
+                            <p className="text-sm text-muted-foreground">
+                              Tidak ada peminjaman aktif
+                            </p>
                             {searchQuery && (
                               <Button
                                 variant="outline"
@@ -199,8 +236,8 @@ export default function ActiveLoanTable() {
                     <div className="flex items-start gap-3">
                       <div className="h-14 w-10 bg-muted rounded overflow-hidden flex-shrink-0">
                         {loan.book.coverImage && (
-                          <img 
-                            src={loan.book.coverImage} 
+                          <img
+                            src={loan.book.coverImage}
                             alt={loan.book.title}
                             className="h-full w-full object-cover"
                           />
@@ -208,7 +245,9 @@ export default function ActiveLoanTable() {
                       </div>
                       <div>
                         <h3 className="font-semibold">{loan.book.title}</h3>
-                        <p className="text-sm text-muted-foreground">{loan.book.author}</p>
+                        <p className="text-sm text-muted-foreground">
+                          {loan.book.author}
+                        </p>
                       </div>
                     </div>
                     <div className="mt-3 space-y-1 text-sm">
@@ -225,7 +264,9 @@ export default function ActiveLoanTable() {
               ) : (
                 <div className="flex flex-col items-center justify-center gap-2 rounded-md border p-8 text-center">
                   <Book className="h-8 w-8 text-muted-foreground" />
-                  <p className="text-sm text-muted-foreground">Tidak ada peminjaman aktif</p>
+                  <p className="text-sm text-muted-foreground">
+                    Tidak ada peminjaman aktif
+                  </p>
                   {searchQuery && (
                     <Button
                       variant="outline"
@@ -242,5 +283,5 @@ export default function ActiveLoanTable() {
         )}
       </CardContent>
     </Card>
-  )
-} 
+  );
+}

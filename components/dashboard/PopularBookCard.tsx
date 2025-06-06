@@ -54,7 +54,7 @@ export default function PopularBookCard({
         </div>
         {/* Badge Jumlah Peminjaman */}
         <span className="mt-2 mb-1 bg-orange-500 text-white px-2 py-0.5 rounded-full text-xs shadow font-semibold whitespace-nowrap">
-          🔥 {book.borrowCount} peminjaman
+          🔥 {book.borrowCount}borrowed
         </span>
         {/* Info Buku */}
         <div className="mt-1 text-center w-full">

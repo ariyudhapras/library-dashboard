@@ -46,8 +46,8 @@ function Calendar({ className, classNames, showOutsideDays = true, ...props }: C
         ...classNames,
       }}
       components={{
-        IconLeft: ({ ...props }) => <ChevronLeft className="h-4 w-4" />,
-        IconRight: ({ ...props }) => <ChevronRight className="h-4 w-4" />,
+        // IconLeft and IconRight are not valid DayPicker component props.
+        // DayPicker uses its own default chevrons or expects a 'Chevron' component override.
       }}
       {...props}
     />

@@ -11,10 +11,44 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Label } from "@/components/ui/label"
 import { cn } from "@/lib/utils"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
+
+interface PeminjamanItem {
+  id: number;
+  memberName: string;
+  bookTitle: string;
+  date: string;
+  fine: null;
+}
+
+interface PengembalianItem {
+  id: number;
+  memberName: string;
+  bookTitle: string;
+  date: string;
+  fine: number | null;
+}
+
+interface DendaItem {
+  id: number;
+  memberName: string;
+  bookTitle: string;
+  date: string;
+  fine: number;
+}
+
+// A union type for items in filteredData, as it can hold items from any report type after filtering by date
+// However, when mapping or reducing, we often know the specific type based on reportType
+type ReportItem = PeminjamanItem | PengembalianItem | DendaItem;
+
+interface SampleData {
+  peminjaman: PeminjamanItem[];
+  pengembalian: PengembalianItem[];
+  denda: DendaItem[];
+}
 import { Calendar } from "@/components/ui/calendar"
 
-// Sample data for reports
-const sampleData = {
+// Sample report data (replace with actual API data)
+const sampleData: SampleData = {
   peminjaman: [
     {
       id: 1,
@@ -129,7 +163,7 @@ const sampleData = {
 }
 
 // Format currency to Indonesian Rupiah
-const formatCurrency = (amount) => {
+const formatCurrency = (amount: number | null): string => {
   if (amount === null) return "-"
   return new Intl.NumberFormat("id-ID", {
     style: "currency",
@@ -139,16 +173,16 @@ const formatCurrency = (amount) => {
 }
 
 // Format date to Indonesian format
-const formatDate = (dateString) => {
+const formatDate = (dateString: string | null | undefined): string => {
   if (!dateString) return "-"
   return format(parseISO(dateString), "d MMMM yyyy", { locale: id })
 }
 
-export default function ReportViewer() {
-  const [reportType, setReportType] = useState("peminjaman")
-  const [fromDate, setFromDate] = useState(parseISO("2023-05-01"))
-  const [toDate, setToDate] = useState(parseISO("2023-05-31"))
-  const printRef = useRef(null)
+export default function ReportViewer(): JSX.Element {
+  const [reportType, setReportType] = useState<"peminjaman" | "pengembalian" | "denda">("peminjaman")
+  const [fromDate, setFromDate] = useState<Date | undefined>(parseISO("2023-05-01"))
+  const [toDate, setToDate] = useState<Date | undefined>(parseISO("2023-05-31"))
+  const printRef = useRef<HTMLDivElement>(null)
 
   // Get report title based on type
   const getReportTitle = () => {
@@ -164,16 +198,37 @@ export default function ReportViewer() {
     }
   }
 
+  // Determine the source array based on reportType for stronger type inference
+  let itemsForCurrentReportType: PeminjamanItem[] | PengembalianItem[] | DendaItem[];
+  if (reportType === 'peminjaman') {
+    itemsForCurrentReportType = sampleData.peminjaman;
+  } else if (reportType === 'pengembalian') {
+    itemsForCurrentReportType = sampleData.pengembalian;
+  } else { // reportType === 'denda'
+    itemsForCurrentReportType = sampleData.denda;
+  }
+
   // Filter data based on date range
-  const filteredData = sampleData[reportType].filter((item) => {
-    const itemDate = parseISO(item.date)
-    return isWithinInterval(itemDate, { start: fromDate, end: toDate })
-  })
+  const filteredData = itemsForCurrentReportType.filter(item => {
+    const itemDate = parseISO(item.date); // item.date should now be correctly typed as string
+    return fromDate && toDate && isWithinInterval(itemDate, { start: fromDate, end: toDate });
+  });
 
   // Handle print/export
   const handlePrint = () => {
-    const content = printRef.current
-    const printWindow = window.open("", "_blank")
+    const contentElement = printRef.current;
+    if (!contentElement) {
+      console.error("Print content area not found.");
+      alert("Area konten untuk dicetak tidak ditemukan. Silakan coba lagi.");
+      return;
+    }
+
+    const printWindow = window.open("", "_blank");
+    if (!printWindow) {
+      console.error("Failed to open print window. Please check your browser's pop-up blocker settings.");
+      alert("Gagal membuka jendela cetak. Mohon periksa pengaturan pemblokir pop-up peramban Anda.");
+      return;
+    }
 
     printWindow.document.write(`
       <html>
@@ -187,27 +242,31 @@ export default function ReportViewer() {
             th { background-color: #f2f2f2; }
             .report-info { margin-bottom: 20px; }
             .report-info p { margin: 5px 0; }
+            .print-button { display: none; } /* Hide button in actual print */
+            @media screen { /* Show button only on screen */
+              .print-button { display: inline-block; padding: 10px 15px; cursor: pointer; background-color: #007bff; color: white; border: none; border-radius: 5px; }
+            }
             @media print {
-              button { display: none; }
+              .print-button { display: none; }
             }
           </style>
         </head>
         <body>
           <h1>${getReportTitle()}</h1>
           <div class="report-info">
-            <p>Periode: ${format(fromDate, "d MMMM yyyy", { locale: id })} - ${format(toDate, "d MMMM yyyy", { locale: id })}</p>
+            <p>Periode: ${fromDate ? format(fromDate, "d MMMM yyyy", { locale: id }) : "N/A"} - ${toDate ? format(toDate, "d MMMM yyyy", { locale: id }) : "N/A"}</p>
             <p>Tanggal Cetak: ${format(new Date(), "d MMMM yyyy", { locale: id })}</p>
           </div>
-          ${content.outerHTML}
+          ${contentElement.outerHTML}
           <div style="margin-top: 20px; text-align: center;">
-            <button onclick="window.print()">Cetak</button>
+            <button class="print-button" onclick="window.print()">Cetak Laporan Ini</button>
           </div>
         </body>
       </html>
-    `)
-
-    printWindow.document.close()
-  }
+    `);
+    printWindow.document.close();
+    printWindow.focus(); // Focus the new window, helpful for some browsers
+  };
 
   return (
     <Card className="border shadow-sm">
@@ -219,7 +278,7 @@ export default function ReportViewer() {
         <div className="mb-6 grid gap-4 md:grid-cols-3">
           <div className="space-y-2">
             <Label htmlFor="report-type">Jenis Laporan</Label>
-            <Select value={reportType} onValueChange={setReportType}>
+            <Select value={reportType} onValueChange={(value) => setReportType(value as "peminjaman" | "pengembalian" | "denda")}>
               <SelectTrigger id="report-type">
                 <SelectValue placeholder="Pilih jenis laporan" />
               </SelectTrigger>
@@ -244,7 +303,7 @@ export default function ReportViewer() {
                 </Button>
               </PopoverTrigger>
               <PopoverContent className="w-auto p-0">
-                <Calendar mode="single" selected={fromDate} onSelect={setFromDate} initialFocus />
+                <Calendar mode="single" selected={fromDate} onSelect={setFromDate} initialFocus required={false} />
               </PopoverContent>
             </Popover>
           </div>
@@ -262,7 +321,7 @@ export default function ReportViewer() {
                 </Button>
               </PopoverTrigger>
               <PopoverContent className="w-auto p-0">
-                <Calendar mode="single" selected={toDate} onSelect={setToDate} initialFocus />
+                <Calendar mode="single" selected={toDate} onSelect={setToDate} initialFocus required={false} />
               </PopoverContent>
             </Popover>
           </div>
@@ -288,7 +347,7 @@ export default function ReportViewer() {
             </TableHeader>
             <TableBody>
               {filteredData.length > 0 ? (
-                filteredData.map((item, index) => (
+                filteredData.map((item: ReportItem, index: number) => (
                   <TableRow key={item.id}>
                     <TableCell>{index + 1}</TableCell>
                     <TableCell className="font-medium">{item.memberName}</TableCell>
@@ -316,7 +375,7 @@ export default function ReportViewer() {
         {filteredData.length > 0 && reportType === "denda" && (
           <div className="mt-4 text-right">
             <p className="text-sm font-medium">
-              Total Denda: {formatCurrency(filteredData.reduce((sum, item) => sum + item.fine, 0))}
+              Total Denda: {formatCurrency(filteredData.reduce((sum: number, item) => sum + (item as DendaItem).fine, 0))}
             </p>
           </div>
         )}

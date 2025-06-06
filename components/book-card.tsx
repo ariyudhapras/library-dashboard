@@ -30,16 +30,18 @@ export type Book = {
 interface BookCardProps {
   book: Book;
   onRequestLoan: (book: Book) => void;
-  isWishlisted?: boolean;
+  isBorrowed: boolean;
+  isWishlisted: boolean;
+  onToggleWishlist: (bookId: number) => void;
 }
 
 export function BookCard({
   book,
   onRequestLoan,
-  isWishlisted = false,
+  isBorrowed,
+  isWishlisted,
+  onToggleWishlist,
 }: BookCardProps) {
-  const { data: session } = useSession();
-  const [isAlreadyBorrowed, setIsAlreadyBorrowed] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
 
   // Check if book is new (published in 2024 or later)
@@ -51,37 +53,9 @@ export function BookCard({
   // Check if book is low in stock (less than 3)
   const isLowStock = book.stock > 0 && book.stock < 3;
 
-  useEffect(() => {
-    const checkIfBorrowed = async () => {
-      if (!session?.user?.id) return;
-
-      try {
-        const response = await fetch(
-          `/api/bookloans?userId=${session.user.id}`
-        );
-        if (!response.ok) return;
-
-        const loans = await response.json();
-
-        // Check if any active loan exists for this book
-        const borrowed = loans.some(
-          (loan: any) =>
-            loan.bookId === book.id &&
-            (loan.status === "PENDING" || loan.status === "APPROVED")
-        );
-
-        setIsAlreadyBorrowed(borrowed);
-      } catch (error) {
-        console.error("Error checking book status:", error);
-      }
-    };
-
-    if (session?.user?.id) {
-      checkIfBorrowed();
-    }
-  }, [book.id, session]);
-
+  // Loan request handler, blocks if already borrowed
   const handleRequestLoan = async () => {
+    if (isBorrowed || book.stock === 0) return;
     setIsLoading(true);
     try {
       await onRequestLoan(book);
@@ -191,43 +165,79 @@ export function BookCard({
         </p>
       </CardContent>
 
-      <CardFooter className="p-4 flex flex-row gap-2">
-        <Button
-          onClick={handleRequestLoan}
-          className="flex-1"
-          disabled={book.stock === 0 || isLoading || isAlreadyBorrowed}
-          aria-label={
-            book.stock > 0 ? "Ajukan peminjaman buku" : "Stok buku habis"
-          }
-        >
-          {isLoading ? (
-            <>
-              <Loader2
-                className="h-4 w-4 mr-2 animate-spin"
-                aria-hidden="true"
-              />
-              <span>Memproses...</span>
-            </>
-          ) : isAlreadyBorrowed ? (
-            <>
-              <AlertCircle className="h-4 w-4 mr-2" />
-              <span>Sudah Dipinjam</span>
-            </>
-          ) : (
-            "Ajukan Pinjam"
-          )}
-        </Button>
-
-        {session?.user && (
-          <WishlistConfirmButton
-            bookId={book.id}
-            className="w-10 h-10"
-            initialIsWishlisted={isWishlisted}
-            aria-label={
-              isWishlisted ? "Hapus dari Wishlist" : "Tambah ke Wishlist"
+      {/* Responsive CardFooter: Desktop (row), Mobile (column, wishlist below or corner) */}
+      <CardFooter className="p-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex w-full gap-2">
+          <Button
+            onClick={handleRequestLoan}
+            className={
+              `w-full text-sm py-2 rounded-md sm:flex-1 sm:py-2 flex items-center justify-center gap-2` +
+              (isBorrowed ? ' bg-gray-200 text-gray-600 cursor-not-allowed opacity-90' : '')
             }
-          />
-        )}
+            disabled={book.stock === 0 || isLoading || isBorrowed}
+            aria-label={
+              book.stock === 0
+                ? "Stok buku habis"
+                : isBorrowed
+                ? "Already Borrowed"
+                : "Ajukan peminjaman buku"
+            }
+            tabIndex={book.stock === 0 || isLoading || isBorrowed ? -1 : 0}
+          >
+            {isLoading ? (
+              <>
+                <Loader2
+                  className="h-4 w-4 mr-2 animate-spin"
+                  aria-hidden="true"
+                />
+                <span>Memproses...</span>
+              </>
+            ) : isBorrowed ? (
+              <>
+                <AlertCircle className="h-4 w-4" />
+                <span>Already Borrowed</span>
+              </>
+            ) : (
+              "Ajukan Pinjam"
+            )}
+          </Button>
+
+          {/* Desktop: Wishlist button next to loan button */}
+          <button
+            type="button"
+            aria-label={isWishlisted ? "Remove from Wishlist" : "Add to Wishlist"}
+            onClick={() => onToggleWishlist(book.id)}
+            className={
+              `hidden sm:flex w-10 h-10 rounded-full items-center justify-center transition hover:bg-blue-100 focus:outline-none focus:ring-2 focus:ring-blue-400 ml-1` +
+              (isWishlisted ? " text-blue-600" : " text-gray-400")
+            }
+          >
+            {isWishlisted ? (
+              <svg xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 24 24" className="w-6 h-6"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41 0.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>
+            ) : (
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" className="w-6 h-6"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41 0.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>
+            )}
+          </button>
+        </div>
+
+        {/* Mobile: Wishlist button below loan button or at bottom right */}
+        <div className="flex justify-end sm:hidden mt-2">
+          <button
+            type="button"
+            aria-label={isWishlisted ? "Remove from Wishlist" : "Add to Wishlist"}
+            onClick={() => onToggleWishlist(book.id)}
+            className={
+              `w-10 h-10 rounded-full flex items-center justify-center transition hover:bg-blue-100 focus:outline-none focus:ring-2 focus:ring-blue-400` +
+              (isWishlisted ? " text-blue-600" : " text-gray-400")
+            }
+          >
+            {isWishlisted ? (
+              <svg xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 24 24" className="w-6 h-6"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41 0.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>
+            ) : (
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" className="w-6 h-6"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41 0.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>
+            )}
+          </button>
+        </div>
       </CardFooter>
     </Card>
   );
