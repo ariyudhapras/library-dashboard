@@ -1,4 +1,4 @@
-import prisma from '@/lib/prisma'
+import { supabase } from '@/lib/supabase'
 import { writeFile, mkdir } from 'fs/promises'
 import { join } from 'path'
 import fs from 'fs'
@@ -36,14 +36,20 @@ export async function backupDatabase() {
     console.log('Starting database backup...')
     
     // Ambil data dari tabel-tabel penting
-    const users = await prisma.user.findMany()
-    const books = await prisma.book.findMany()
-    const bookLoans = await prisma.bookLoan.findMany()
+    const { data: users, error: usersError } = await supabase.from('user').select('*')
+    if (usersError) throw new Error(`Error fetching users: ${usersError.message}`)
+
+    const { data: books, error: booksError } = await supabase.from('book').select('*')
+    if (booksError) throw new Error(`Error fetching books: ${booksError.message}`)
+
+    const { data: bookLoans, error: bookLoansError } = await supabase.from('bookLoan').select('*')
+    if (bookLoansError) throw new Error(`Error fetching bookLoans: ${bookLoansError.message}`)
+
     
     // Buat objek backup
     const backupData = {
       timestamp: new Date().toISOString(),
-      users: users.map((user: any) => ({
+      users: (users || []).map((user: any) => ({ // Add null check for users
         ...user,
         password: '[REDACTED]' // Jangan backup password plaintext
       })),
@@ -95,7 +101,9 @@ export async function restoreFromBackup(backupFilePath: string) {
     const backupData = JSON.parse(backupContent)
     
     // Restore books jika tabel kosong
-    const bookCount = await prisma.book.count()
+    const { count: bookCount, error: countError } = await supabase.from('book').select('id', { count: 'exact', head: true })
+    if (countError) throw new Error(`Error counting books: ${countError.message}`)
+
     if (bookCount === 0 && backupData.books && backupData.books.length > 0) {
       console.log(`Restoring ${backupData.books.length} books...`)
       
@@ -110,12 +118,11 @@ export async function restoreFromBackup(backupFilePath: string) {
         coverImage: book.coverImage
       }))
       
-      // Restore satu per satu untuk menghindari konflik
-      for (const book of booksToRestore) {
-        await prisma.book.create({
-          data: book
-        })
-      }
+      // Restore books
+      // Supabase insert can take an array of objects
+      const { error: insertError } = await supabase.from('book').insert(booksToRestore)
+      if (insertError) throw new Error(`Error inserting books: ${insertError.message}`)
+
     }
     
     console.log('Database restore completed')

@@ -2,7 +2,7 @@ import { NextAuthOptions } from "next-auth"
 import CredentialsProvider from "next-auth/providers/credentials"
 import { compare } from "bcryptjs"
 import NextAuth from "next-auth/next"
-import prisma from "@/lib/prisma"
+import { supabase } from "@/lib/supabase"; // Replaced prisma with supabase
 
 export const authOptions: NextAuthOptions = {
   pages: {
@@ -29,11 +29,17 @@ export const authOptions: NextAuthOptions = {
         }
 
         try {
-          const user = await prisma.user.findUnique({
-            where: {
-              email: credentials.email,
-            },
-          })
+          const { data: user, error: dbError } = await supabase
+            .from('user')
+            .select('*')
+            .eq('email', credentials.email)
+            .single();
+
+          if (dbError) {
+            console.error('[AUTH] Supabase error fetching user:', dbError.message);
+            return null;
+          }
+          // Original Prisma code was here
 
           if (!user) {
             console.log('[AUTH] User not found:', credentials.email)
@@ -48,8 +54,9 @@ export const authOptions: NextAuthOptions = {
           }
           
           console.log('[AUTH] Login success for:', user.email)
+          // Ensure user object structure is consistent, NextAuth User type expects id: number here
           return {
-            id: user.id.toString(),
+            id: user.id, // user.id from Supabase should be a number
             email: user.email,
             name: user.name,
             memberId: user.memberId,
@@ -67,7 +74,9 @@ export const authOptions: NextAuthOptions = {
   callbacks: {
     jwt: async ({ token, user }) => {
       if (user) {
-        token.id = user.id
+        // Ensure token.id is a number. user.id from authorize callback should be a number.
+        // If user.id is somehow a string here, attempt to parse it.
+        token.id = typeof user.id === 'string' ? parseInt(user.id, 10) : user.id;
         token.email = user.email
         token.name = user.name
         token.memberId = user.memberId
@@ -80,7 +89,7 @@ export const authOptions: NextAuthOptions = {
     },
     session: async ({ session, token }) => {
       if (token) {
-        session.user.id = token.id as string
+        session.user.id = token.id as number; // JWT token.id is a number, session.user.id expects a number
         session.user.email = token.email as string
         session.user.name = token.name as string
         session.user.memberId = token.memberId as string
@@ -103,10 +112,15 @@ export const authOptions: NextAuthOptions = {
     async signIn({ user }) {
       // Update last login time
       if (user?.email) {
-        await prisma.user.update({
-          where: { email: user.email },
-          data: { lastLogin: new Date() },
-        })
+        const { error: updateError } = await supabase
+          .from('user')
+          .update({ lastLogin: new Date() })
+          .eq('email', user.email);
+
+        if (updateError) {
+          console.error('[AUTH] Supabase error updating lastLogin:', updateError.message);
+          // Depending on requirements, you might not want to block sign-in for this.
+        }
       }
     },
   },

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import prisma from "@/lib/prisma";
+import { supabase } from "@/lib/supabase"; // Replaced prisma with supabase
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import { differenceInDays } from "date-fns";
@@ -46,32 +46,41 @@ export async function POST(request: NextRequest) {
       filterConditions.userId = parseInt(filters.memberId);
     }
 
-    // Get loan data (same as your existing API)
-    const loans = await prisma.bookLoan.findMany({
-      where: filterConditions,
-      include: {
-        user: {
-          select: {
-            id: true,
-            memberId: true,
-            name: true,
-            email: true,
-          },
-        },
-        book: {
-          select: {
-            id: true,
-            title: true,
-            author: true,
-            isbn: true,
-            publisher: true,
-          },
-        },
-      },
-      orderBy: {
-        borrowDate: "desc",
-      },
-    });
+    // Build Supabase query
+    let query = supabase
+      .from('bookLoan')
+      .select(`
+        *,
+        user (id, memberId, name, email),
+        book (id, title, author, isbn, publisher)
+      `);
+
+    // Apply filters
+    if (filters?.startDate) {
+      query = query.gte('borrowDate', new Date(filters.startDate).toISOString());
+    }
+    if (filters?.endDate) {
+      query = query.lte('borrowDate', new Date(filters.endDate).toISOString());
+    }
+    if (filters?.status && filters.status !== "all") {
+      query = query.eq('status', filters.status);
+    }
+    if (filters?.memberId && !isNaN(Number(filters.memberId))) {
+      query = query.eq('userId', parseInt(filters.memberId));
+    }
+
+    // Apply ordering
+    query = query.order('borrowDate', { ascending: false });
+
+    // Get loan data
+    const { data: loansData, error: dbError } = await query;
+
+    if (dbError) {
+      console.error("Error fetching loans from Supabase:", dbError);
+      return NextResponse.json({ error: "Failed to fetch loan data" }, { status: 500 });
+    }
+
+    const loans = loansData || [];
 
     // Process the loans data (same logic as your existing API)
     const processedLoans = loans.map((loan: any, index: number) => {

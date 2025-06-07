@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
-import prisma from "@/lib/prisma";
+import { authOptions } from "@/app/api/auth/[...nextauth]/route"; // Updated authOptions import
+import { supabase } from "@/lib/supabase"; // Replaced prisma with supabase
 
 export async function DELETE(
   req: Request,
@@ -18,22 +18,31 @@ export async function DELETE(
       return new NextResponse("Invalid ID", { status: 400 });
     }
 
-    const wishlistItem = await prisma.wishlist.findUnique({
-      where: {
-        id: wishlistId,
-        userId: session.user.id,
-      },
-    });
+    const { data: wishlistItem, error: findError } = await supabase
+      .from('wishlist')
+      .select('*')
+      .eq('id', wishlistId)
+      .eq('userId', session.user.id) // Assuming session.user.id is number
+      .single();
+
+    if (findError) {
+      console.error("[WISHLIST_DELETE_FIND_ERROR]", findError);
+      return new NextResponse("Internal error finding item", { status: 500 });
+    }
 
     if (!wishlistItem) {
       return new NextResponse("Not found", { status: 404 });
     }
 
-    await prisma.wishlist.delete({
-      where: {
-        id: wishlistId,
-      },
-    });
+    const { error: deleteError } = await supabase
+      .from('wishlist')
+      .delete()
+      .eq('id', wishlistId);
+
+    if (deleteError) {
+      console.error("[WISHLIST_DELETE_ERROR]", deleteError);
+      return new NextResponse("Internal error deleting item", { status: 500 });
+    }
 
     return new NextResponse(null, { status: 204 });
   } catch (error) {

@@ -1,4 +1,5 @@
 import { type ClassValue, clsx } from "clsx"
+import { supabase } from '@/lib/supabase';
 import { twMerge } from "tailwind-merge"
 
 export function cn(...inputs: ClassValue[]) {
@@ -270,24 +271,28 @@ export function generateMemberCardHTML(profile: any): string {
  * Generate a unique member ID with format A0001
  * @returns A new unique member ID
  */
-export async function generateMemberId(prisma: any): Promise<string> {
+export async function generateMemberId(): Promise<string> {
   const prefix = "A";
   
   // Find the last member ID
-  const lastMember = await prisma.user.findFirst({
-    where: {
-      memberId: {
-        startsWith: prefix
-      }
-    },
-    orderBy: {
-      memberId: 'desc'
-    }
-  });
+  const { data: lastMember, error: fetchError } = await supabase
+    .from('user')
+    .select('memberId') // Only select memberId
+    .like('memberId', `${prefix}%`)
+    .order('memberId', { ascending: false })
+    .limit(1)
+    .maybeSingle(); // Use maybeSingle as it's possible no member exists yet
+
+  if (fetchError) {
+    // A real error object means something went wrong with the query itself.
+    throw new Error(`Error fetching last member: ${fetchError.message}`);
+  }
   
   let sequentialNumber = 1;
   
-  if (lastMember) {
+  // lastMember from Supabase with maybeSingle() can be null if no record is found.
+  // lastMember.memberId can also be null if the column is nullable.
+  if (lastMember && lastMember.memberId && typeof lastMember.memberId === 'string') {
     // Extract the sequential number from the last member ID
     const lastSequentialStr = lastMember.memberId.substring(prefix.length);
     const lastSequential = parseInt(lastSequentialStr, 10);
@@ -308,35 +313,51 @@ export async function generateMemberId(prisma: any): Promise<string> {
  * Should be called only once during system update
  * @returns Number of migrated IDs
  */
-export async function migrateMemberIds(prisma: any): Promise<number> {
+export async function migrateMemberIds(): Promise<number> {
   // Find all users with M prefix
-  const users = await prisma.user.findMany({
-    where: {
-      memberId: {
-        startsWith: "M"
-      }
-    }
-  });
+  const { data: usersData, error: usersError } = await supabase
+    .from('user')
+    .select('id, memberId') // Select only necessary fields: id and memberId
+    .like('memberId', 'M%');
+
+  if (usersError) {
+    throw new Error(`Error fetching users for migration: ${usersError.message}`);
+  }
   
+  const users = usersData || []; // Handle case where usersData might be null
   let count = 0;
   
   // Update each user's memberId
+  // Assuming 'users' is an array of objects like { id: number; memberId: string | null; ... }
   for (const user of users) {
-    // Extract the sequential number
-    const sequentialStr = user.memberId.substring(1);
-    const sequentialNum = parseInt(sequentialStr, 10);
-    
-    if (!isNaN(sequentialNum)) {
-      // Create new memberId with A prefix
-      const newMemberId = `A${sequentialNum.toString().padStart(4, '0')}`;
-      
-      // Update the user
-      await prisma.user.update({
-        where: { id: user.id },
-        data: { memberId: newMemberId }
-      });
-      
-      count++;
+    // Ensure memberId is a string and id exists before proceeding
+    if (user.memberId && typeof user.memberId === 'string' && user.id) {
+        // Extract the sequential number. Assumes "M" is a single character prefix.
+        const sequentialStr = user.memberId.substring(1);
+        const sequentialNum = parseInt(sequentialStr, 10);
+        
+        if (!isNaN(sequentialNum)) {
+          // Create new memberId with A prefix
+          const newMemberId = `A${sequentialNum.toString().padStart(4, '0')}`;
+          
+          // Update the user
+          const { error: updateError } = await supabase
+            .from('user')
+            .update({ memberId: newMemberId })
+            .eq('id', user.id);
+
+          if (updateError) {
+            // Log the error for the specific user and re-throw or handle as needed.
+            // For now, re-throwing to halt on first error as per previous logic.
+            console.error(`Error updating user ${user.id} memberId: ${updateError.message}`);
+            throw new Error(`Error updating user ${user.id} memberId: ${updateError.message}`);
+          }
+          
+          count++;
+        }
+    } else {
+      // Log if a user record is missing memberId or id, or if memberId is not a string
+      console.warn(`Skipping user due to missing/invalid id or memberId: ${JSON.stringify(user)}`);
     }
   }
   

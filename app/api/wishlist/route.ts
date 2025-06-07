@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
-import prisma from "@/lib/prisma";
+import { authOptions } from "@/app/api/auth/[...nextauth]/route"; // Updated authOptions import
+import { supabase } from "@/lib/supabase"; // Replaced prisma with supabase
 
 export async function POST(req: Request) {
   try {
@@ -22,9 +22,19 @@ export async function POST(req: Request) {
     }
 
     // Check if book exists
-    const book = await prisma.book.findUnique({
-      where: { id: bookId },
-    });
+    const { data: book, error: bookError } = await supabase
+      .from('book')
+      .select('id')
+      .eq('id', bookId)
+      .single();
+
+    if (bookError) {
+      console.error("Error checking book existence:", bookError);
+      return NextResponse.json(
+        { error: "Failed to verify book" },
+        { status: 500 }
+      );
+    }
 
     if (!book) {
       return NextResponse.json(
@@ -34,15 +44,24 @@ export async function POST(req: Request) {
     }
 
     // Add to wishlist
-    const wishlist = await prisma.wishlist.create({
-      data: {
-        userId: session.user.id,
+    const { data: newWishlistItem, error: createError } = await supabase
+      .from('wishlist')
+      .insert({
+        userId: session.user.id, // Assuming session.user.id is number
         bookId: bookId,
-      },
-      include: {
-        book: true,
-      },
-    });
+      })
+      .select('*, book(*)') // Fetch the created item and the related book
+      .single();
+
+    if (createError) {
+      console.error("Error adding to wishlist:", createError);
+      return NextResponse.json(
+        { error: "Failed to add to wishlist" },
+        { status: 500 }
+      );
+    }
+    // Supabase returns the created item with the nested book if select is correct
+    const wishlist = newWishlistItem;
 
     return NextResponse.json(wishlist);
   } catch (error) {
@@ -61,27 +80,23 @@ export async function GET() {
       return new NextResponse("Unauthorized", { status: 401 });
     }
 
-    const wishlist = await prisma.wishlist.findMany({
-      where: {
-        userId: session.user.id,
-      },
-      include: {
-        book: {
-          select: {
-            id: true,
-            title: true,
-            author: true,
-            coverImage: true,
-          },
-        },
-      },
-    });
+    const { data: wishlistData, error: fetchError } = await supabase
+      .from('wishlist')
+      .select('id, book (id, title, author, coverImage)') // Select specific fields from book
+      .eq('userId', session.user.id); // Assuming session.user.id is number
 
-    const formattedWishlist = wishlist.map((item) => ({
+    if (fetchError) {
+      console.error("[WISHLIST_GET_SUPABASE_ERROR]", fetchError);
+      return new NextResponse("Internal error fetching wishlist", { status: 500 });
+    }
+    const wishlist = wishlistData || [];
+
+    const formattedWishlist = wishlist.map((item: any) => ({
       id: item.id,
-      title: item.book.title,
-      author: item.book.author,
-      coverUrl: item.book.coverImage || "/placeholder-book.jpg",
+      // Ensure item.book is not null and has the expected properties
+      title: item.book?.title || 'N/A',
+      author: item.book?.author || 'N/A',
+      coverUrl: item.book?.coverImage || "/placeholder-book.jpg",
     }));
 
     return NextResponse.json(formattedWishlist);

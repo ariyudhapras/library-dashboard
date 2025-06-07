@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server"
-import prisma from "@/lib/prisma"
+import { supabase } from "@/lib/supabase"; // Replaced prisma with supabase
 import { differenceInDays } from "date-fns"
 
 export async function GET(request: Request) {
@@ -35,30 +35,40 @@ export async function GET(request: Request) {
       filterConditions.userId = parseInt(memberId)
     }
     
-    // Fetch all loan data with related user and book information
-    const loans = await prisma.bookLoan.findMany({
-      where: filterConditions,
-      include: {
-        user: {
-          select: {
-            id: true,
-            name: true,
-            email: true,
-          },
-        },
-        book: {
-          select: {
-            id: true,
-            title: true,
-            author: true,
-            isbn: true,
-          },
-        },
-      },
-      orderBy: {
-        borrowDate: 'desc',
-      },
-    })
+    // Build Supabase query
+    let query = supabase
+      .from('bookLoan')
+      .select(`
+        *,
+        user (id, name, email),
+        book (id, title, author, isbn)
+      `);
+
+    // Apply filters
+    if (startDate) {
+      query = query.gte('borrowDate', new Date(startDate).toISOString());
+    }
+    if (endDate) {
+      query = query.lte('borrowDate', new Date(endDate).toISOString());
+    }
+    if (status && status !== "all") { // Assuming 'all' means no status filter
+      query = query.eq('status', status);
+    }
+    if (memberId && !isNaN(Number(memberId))) {
+      query = query.eq('userId', parseInt(memberId));
+    }
+
+    // Apply ordering
+    query = query.order('borrowDate', { ascending: false });
+
+    // Fetch all loan data
+    const { data: loansData, error: dbError } = await query;
+
+    if (dbError) {
+      console.error("Error fetching loans from Supabase:", dbError);
+      return NextResponse.json({ error: "Failed to fetch loan data" }, { status: 500 });
+    }
+    const loans = loansData || [];
 
     // Process the loans data to add calculated fields
     // @ts-ignore

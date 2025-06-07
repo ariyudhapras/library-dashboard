@@ -1,6 +1,5 @@
 import { NextResponse } from "next/server"
-import prisma from "@/lib/prisma"
-import { migrateMemberIds } from "@/lib/utils"
+import { migrateMemberIds } from "@/lib/utils"; // Prisma import removed
 import { getServerSession } from "next-auth"
 import { authOptions } from "@/app/api/auth/[...nextauth]/route"
 
@@ -18,7 +17,8 @@ export async function GET(req: Request) {
     }
     
     // Run the migration
-    const count = await migrateMemberIds(prisma)
+    // The migrateMemberIds function from lib/utils has been refactored to use Supabase internally
+    const count = await migrateMemberIds();
     
     return NextResponse.json(
       { 

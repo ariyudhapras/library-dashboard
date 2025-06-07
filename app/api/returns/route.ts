@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import prisma from "@/lib/prisma";
+import { supabase } from "@/lib/supabase"; // Replaced prisma with supabase
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 
@@ -17,33 +17,24 @@ export async function GET(request: NextRequest) {
     }
 
     // Get all book loans with RETURNED status
-    const returnedLoans = await prisma.bookLoan.findMany({
-      where: {
-        status: "RETURNED",
-      },
-      include: {
-        book: {
-          select: {
-            id: true,
-            title: true,
-            author: true,
-            coverImage: true,
-            stock: true,
-          },
-        },
-        user: {
-          select: {
-            id: true,
-            name: true,
-            email: true,
-            profileImage: true, // ✅ TAMBAHKAN INI!
-          },
-        },
-      },
-      orderBy: {
-        actualReturnDate: "desc",
-      },
-    });
+    const { data: returnedLoansData, error: fetchError } = await supabase
+      .from('bookLoan')
+      .select(`
+        *,
+        book (id, title, author, coverImage, stock),
+        user (id, name, email, profileImage)
+      `)
+      .eq('status', 'RETURNED')
+      .order('actualReturnDate', { ascending: false });
+
+    if (fetchError) {
+      console.error("Error fetching returned books:", fetchError);
+      return NextResponse.json(
+        { error: "Failed to fetch returned books" },
+        { status: 500 }
+      );
+    }
+    const returnedLoans = returnedLoansData || [];
 
     return NextResponse.json(returnedLoans);
   } catch (error) {
@@ -83,39 +74,40 @@ export async function PATCH(request: NextRequest) {
     }
 
     // Get the current loan
-    const currentLoan = await prisma.bookLoan.findUnique({
-      where: { id },
-    });
+    const { data: currentLoan, error: findError } = await supabase
+      .from('bookLoan')
+      .select('*')
+      .eq('id', id)
+      .single();
+
+    if (findError && findError.code !== 'PGRST116') { // PGRST116: Row to be deleted was not found (for single())
+      console.error("Error finding loan:", findError);
+      return NextResponse.json({ error: "Error finding loan" }, { status: 500 });
+    }
 
     if (!currentLoan) {
       return NextResponse.json({ error: "Loan not found" }, { status: 404 });
     }
 
     // Update the loan status
-    const updatedLoan = await prisma.bookLoan.update({
-      where: { id },
-      data: {
-        status,
-      },
-      include: {
-        book: {
-          select: {
-            id: true,
-            title: true,
-            author: true,
-            coverImage: true,
-          },
-        },
-        user: {
-          select: {
-            id: true,
-            name: true,
-            email: true,
-            profileImage: true, // ✅ TAMBAHKAN INI JUGA!
-          },
-        },
-      },
-    });
+    const { data: updatedLoan, error: updateError } = await supabase
+      .from('bookLoan')
+      .update({ status })
+      .eq('id', id)
+      .select(`
+        *,
+        book (id, title, author, coverImage),
+        user (id, name, email, profileImage)
+      `)
+      .single(); // To get the updated record back
+
+    if (updateError) {
+      console.error("Error updating loan status:", updateError);
+      return NextResponse.json(
+        { error: "Failed to update loan status" },
+        { status: 500 }
+      );
+    }
 
     return NextResponse.json(updatedLoan);
   } catch (error) {

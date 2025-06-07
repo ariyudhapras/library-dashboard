@@ -1,17 +1,10 @@
-import { NextAuthOptions } from "next-auth";
-import { PrismaAdapter } from "@auth/prisma-adapter";
+import NextAuth, { NextAuthOptions, User } from "next-auth";
+import { JWT } from "next-auth/jwt";
 import CredentialsProvider from "next-auth/providers/credentials";
-import prisma from "@/lib/prisma";
-import { compare } from "bcrypt";
+import { supabase } from "@/lib/supabase";
+import bcrypt from 'bcryptjs';
 
 export const authOptions: NextAuthOptions = {
-  // @ts-expect-error // @auth/core adapter vs next-auth v4 adapter type mismatch (see lint ID 877d251a...)
-  // This error is due to type incompatibilities between next-auth@4.x.x and @auth/prisma-adapter which uses a newer @auth/core.
-  // PrismaAdapter expects/produces an AdapterUser that doesn't perfectly match what next-auth v4's Adapter type expects.
-  // Specifically, fields like emailVerified, and potentially how other fields are typed/handled differ.
-  // Our Prisma schema also lacks emailVerified, which PrismaAdapter typically expects or tries to map.
-  adapter: PrismaAdapter(prisma),
-  adapter: PrismaAdapter(prisma),
   session: {
     strategy: "jwt",
   },
@@ -30,91 +23,67 @@ export const authOptions: NextAuthOptions = {
           return null;
         }
 
-        const user = await prisma.user.findUnique({
-          where: {
-            email: credentials.email,
-          },
-        });
+        const { data: user, error: userError } = await supabase
+          .from('user') // Assuming your table is named 'user'
+          .select('*') // Or specify required fields: 'id, name, email, role, memberId, password'
+          .eq('email', credentials.email)
+          .single();
 
-        if (!user) {
+        if (userError) {
+          console.error('Error fetching user from Supabase:', userError.message);
           return null;
         }
 
-        const isPasswordValid = await compare(credentials.password, user.password);
-
-        if (!isPasswordValid) {
+        if (user && user.password && await bcrypt.compare(credentials.password, user.password)) {
+          // Ensure emailVerified is handled if your logic requires it
+          // For example, if you have a user.emailVerified field:
+          // if (!user.emailVerified) {
+          //   throw new Error("Email not verified");
+          // }
+          // Return id as number, as per error: "Type 'string' is not assignable to type 'number'" for User.id
+          return {
+            id: user.id, // user.id from Supabase is a number
+            name: user.name,
+            email: user.email,
+            role: user.role,
+            memberId: user.memberId,
+            status: user.status,
+            profileImage: user.profileImage || null
+          };
+        } else {
           return null;
         }
-
-        return {
-          id: user.id, // Prisma user.id is Int
-          email: user.email,
-          name: user.name,
-          role: user.role,
-          profileImage: user.profileImage,
-          memberId: user.memberId, // Added from Prisma User model
-          status: user.status,     // Added from Prisma User model
-        };
       },
     }),
   ],
   callbacks: {
-    async session({ token, session }) {
+    async session({ session, token }: { session: any; token: JWT }) {
       if (token && session.user) {
-        session.user.id = token.id as number; // token.id is number from JWT interface
-        session.user.name = token.name; // name is string | null | undefined from JWT
-        session.user.email = token.email; // email is string | null | undefined from JWT
-        session.user.role = token.role as string; // role is string from JWT
-        session.user.profileImage = token.profileImage; // profileImage is string | null | undefined from JWT
-        session.user.memberId = token.memberId as string; // Added, assuming memberId is on token
-        session.user.status = token.status as string;   // Added, assuming status is on token
+        session.user.id = token.sub; // Use token.sub for user id in session
+        session.user.name = token.name;
+        session.user.email = token.email;
+        session.user.role = token.role as string; // Cast if you are sure about the type
+        session.user.memberId = token.memberId as string;
+        session.user.status = token.status as string;
+        session.user.profileImage = token.profileImage as string | null;
       }
       return session;
     },
-    async jwt({ token, user }) {
-      const dbUser = await prisma.user.findFirst({
-        where: {
-          email: token.email!,
-        },
-      });
-
-      const augmentedUser = user as User; // Cast user to our augmented User type
-
-      // This block runs on initial sign-in or when JWT is created/refreshed
-      if (augmentedUser) {
-        token.id = augmentedUser.id;
-        token.name = augmentedUser.name;
-        token.email = augmentedUser.email;
-        token.role = augmentedUser.role;
-        token.profileImage = augmentedUser.profileImage;
-        token.memberId = augmentedUser.memberId; // Added
-        token.status = augmentedUser.status;     // Added
+    async jwt({ token, user }: { token: JWT; user?: User }) {
+      // Initial sign in: user is the object from authorize callback
+      if (user && user.id) { // user.id from authorize is a number
+        token.sub = String(user.id); // Standard JWT subject claim (string)
+        token.id = user.id;          // Custom property on token, must be number as per error
+        token.email = user.email;
+        token.name = user.name;
+        token.role = user.role;
+        token.memberId = user.memberId;
+        token.status = user.status;
+        token.profileImage = user.profileImage;
       }
-
-      // If dbUser is found (e.g., on subsequent JWT creations not from initial sign-in),
-      // this could be used to refresh token with latest db info.
-      // However, the primary update should happen via `augmentedUser` from authorize/OAuth.
-      // This block ensures that if a token is somehow generated *not* through the initial user flow
-      // but a dbUser is available, it's used. It also merges essential JWT fields.
-      if (dbUser) {
-        // Preserve essential JWT fields from the old token if they exist
-        const { iat, exp, jti, sub } = token;
-        const newToken: JWT = {
-          ...sub && { sub }, // Keep original subject if present
-          ...iat && { iat },
-          ...exp && { exp },
-          ...jti && { jti },
-          id: dbUser.id,
-          name: dbUser.name,
-          email: dbUser.email,
-          role: dbUser.role,
-          profileImage: dbUser.profileImage || null,
-          memberId: dbUser.memberId, // Added
-          status: dbUser.status,     // Added
-        };
-        return newToken;
-      }
-      return token; // Return the (potentially updated) token
+      // Subsequent calls, token exists, user object is not passed.
+      // The token already has the necessary information.
+      return token;
     },
   },
 }; 

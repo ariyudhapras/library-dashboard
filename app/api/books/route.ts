@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import prisma from '@/lib/prisma';
+import { supabase } from '@/lib/supabase'; // Replaced prisma with supabase
 import { writeFile } from 'fs/promises';
 import { join } from 'path';
 import { mkdir } from 'fs/promises';
@@ -7,13 +7,20 @@ import { mkdir } from 'fs/promises';
 // GET endpoint to fetch all books
 export async function GET() {
   try {
-    const books = await prisma.book.findMany({
-      orderBy: {
-        createdAt: 'desc',
-      },
-    });
+    const { data: books, error: fetchError } = await supabase
+      .from('book')
+      .select('*')
+      .order('createdAt', { ascending: false });
+
+    if (fetchError) {
+      console.error('Error fetching books:', fetchError);
+      return NextResponse.json(
+        { error: 'Failed to fetch books' },
+        { status: 500 }
+      );
+    }
     
-    return NextResponse.json(books);
+    return NextResponse.json(books || []);
   } catch (error) {
     console.error('Error fetching books:', error);
     return NextResponse.json(
@@ -123,9 +130,19 @@ export async function POST(request: NextRequest) {
       coverImage: coverImagePath,
     };
     
-    const newBook = await prisma.book.create({
-      data: bookData,
-    });
+    const { data: newBook, error: createError } = await supabase
+      .from('book')
+      .insert([bookData])
+      .select()
+      .single(); // to get the created record back
+
+    if (createError) {
+      console.error('Error creating book:', createError);
+      return NextResponse.json(
+        { error: createError.message || 'Failed to create book' },
+        { status: 500 }
+      );
+    }
     
     return NextResponse.json(newBook, { status: 201 });
   } catch (error) {
@@ -160,9 +177,17 @@ export async function PUT(request: NextRequest) {
       );
     }
     
-    const existingBook = await prisma.book.findUnique({
-      where: { id: bookId },
-    });
+    const { data: existingBook, error: findError } = await supabase
+      .from('book')
+      .select('*') // Select all fields for the existing book record
+      .eq('id', bookId)
+      .single();
+
+    if (findError && findError.code !== 'PGRST116') { // PGRST116: Row to be deleted was not found (for single())
+      console.error('Error finding book for update:', findError);
+      return NextResponse.json({ error: 'Error finding book before update' }, { status: 500 });
+    }
+    // Note: The check for !existingBook below will handle the case where the book is not found (PGRST116 or null data)
     
     if (!existingBook) {
       return NextResponse.json(
@@ -204,11 +229,17 @@ export async function PUT(request: NextRequest) {
     }
     
     // Get the current book to check if we need to replace the cover image
-    const currentBook = await prisma.book.findUnique({
-      where: { id: bookId },
-      select: { coverImage: true }
-    });
-    
+    const { data: currentBook, error: findCurrentError } = await supabase
+      .from('book')
+      .select('*')
+      .eq('id', bookId)
+      .single();
+
+    if (findCurrentError && findCurrentError.code !== 'PGRST116') { // PGRST116: Row to be deleted was not found (for single())
+      console.error('Error finding book for update:', findCurrentError);
+      // Potentially return error if not PGRST116, or handle as not found below
+    }
+
     // Get cover image file if it exists
     const coverImageFile = formData.get('coverImage') as File | null;
     let coverImagePath = currentBook?.coverImage || null;
@@ -271,10 +302,20 @@ export async function PUT(request: NextRequest) {
       coverImage: coverImagePath,
     };
     
-    const updatedBook = await prisma.book.update({
-      where: { id: bookId },
-      data: bookData,
-    });
+    const { data: updatedBook, error: updateError } = await supabase
+      .from('book')
+      .update(bookData)
+      .eq('id', bookId)
+      .select()
+      .single(); // to get the updated record back
+
+    if (updateError) {
+      console.error('Error updating book:', updateError);
+      return NextResponse.json(
+        { error: updateError.message || 'Failed to update book' },
+        { status: 500 }
+      );
+    }
     
     return NextResponse.json(updatedBook);
   } catch (error) {
@@ -309,9 +350,16 @@ export async function DELETE(request: NextRequest) {
     }
     
     // Check if the book exists
-    const book = await prisma.book.findUnique({
-      where: { id: bookId },
-    });
+    const { data: book, error: findBookError } = await supabase
+      .from('book')
+      .select('id') // Only need to check existence
+      .eq('id', bookId)
+      .maybeSingle(); // Use maybeSingle to handle not found gracefully
+
+    if (findBookError) {
+      console.error('Error checking if book exists:', findBookError);
+      return NextResponse.json({ error: 'Error checking book existence' }, { status: 500 });
+    }
     
     if (!book) {
       return NextResponse.json(
@@ -321,16 +369,18 @@ export async function DELETE(request: NextRequest) {
     }
     
     // Check if book is being borrowed
-    const activeLoans = await prisma.bookLoan.count({
-      where: {
-        bookId: bookId,
-        status: {
-          in: ['PENDING', 'APPROVED']
-        }
-      }
-    });
+    const { count: activeLoans, error: countError } = await supabase
+      .from('bookLoan')
+      .select('id', { count: 'exact', head: true }) // Use head:true if you only need the count
+      .eq('bookId', bookId)
+      .in('status', ['PENDING', 'APPROVED']);
+
+    if (countError) {
+      console.error('Error counting active loans:', countError);
+      return NextResponse.json({ error: 'Error checking active loans' }, { status: 500 });
+    }
     
-    if (activeLoans > 0) {
+    if (activeLoans && activeLoans > 0) {
       return NextResponse.json(
         { error: 'Buku tidak dapat dihapus karena sedang dipinjam' },
         { status: 400 }
@@ -338,9 +388,18 @@ export async function DELETE(request: NextRequest) {
     }
     
     // Delete the book
-    await prisma.book.delete({
-      where: { id: bookId },
-    });
+    const { error: deleteError } = await supabase
+      .from('book')
+      .delete()
+      .eq('id', bookId);
+
+    if (deleteError) {
+      console.error('Error deleting book:', deleteError);
+      return NextResponse.json(
+        { error: deleteError.message || 'Failed to delete book' },
+        { status: 500 }
+      );
+    }
     
     return NextResponse.json({ success: true, message: 'Book deleted successfully' });
   } catch (error) {
