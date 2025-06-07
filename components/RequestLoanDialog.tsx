@@ -155,7 +155,7 @@ export default function RequestLoanDialog({
                     {book.title}
                   </h3>
                   <p className="text-sm text-muted-foreground">
-                    Karya: {book.author}
+                    Author : {book.author}
                   </p>
                   {book.year && (
                     <p className="text-sm text-muted-foreground">
