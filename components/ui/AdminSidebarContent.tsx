@@ -40,27 +40,27 @@ export function AdminSidebarContent({
     },
     {
       href: "/admin/books",
-      label: "Manajemen Buku",
+      label: "Books Management",
       icon: <BookOpen className="w-5 h-5 lg:w-7 lg:h-7" />,
     },
     {
       href: "/admin/members",
-      label: "Manajemen Anggota",
+      label: "Members Management",
       icon: <Users className="w-5 h-5 lg:w-7 lg:h-7" />,
     },
     {
       href: "/admin/requests",
-      label: "Permintaan Peminjaman",
+      label: "Loan Requests",
       icon: <MailQuestion className="w-5 h-5 lg:w-7 lg:h-7" />,
     },
     {
       href: "/admin/returns",
-      label: "Pengembalian",
+      label: "Returns",
       icon: <ArchiveRestore className="w-5 h-5 lg:w-7 lg:h-7" />,
     },
     {
       href: "/admin/reports",
-      label: "Laporan",
+      label: "Reports",
       icon: <FileText className="w-5 h-5 lg:w-7 lg:h-7" />,
     },
   ];

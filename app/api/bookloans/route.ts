@@ -1,43 +1,37 @@
-import { NextRequest, NextResponse } from 'next/server';
-import prisma from '@/lib/prisma';
-import { getServerSession } from 'next-auth';
-import { authOptions } from '@/app/api/auth/[...nextauth]/route';
+import { NextRequest, NextResponse } from "next/server";
+import prisma from "@/lib/prisma";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 
 // LoanStatus enum values
 const LoanStatus = {
-  PENDING: 'PENDING',
-  APPROVED: 'APPROVED',
-  REJECTED: 'REJECTED',
-  RETURNED: 'RETURNED',
-  LATE: 'LATE'
+  PENDING: "PENDING",
+  APPROVED: "APPROVED",
+  REJECTED: "REJECTED",
+  RETURNED: "RETURNED",
+  LATE: "LATE",
 };
 
 // GET endpoint to fetch all book loans or filtered by userId
 export async function GET(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions);
-    
+
     if (!session) {
-      return NextResponse.json(
-        { error: 'Unauthorized' },
-        { status: 401 }
-      );
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
     const { searchParams } = new URL(request.url);
-    const userId = searchParams.get('userId');
-    
-    // If user is not admin and trying to get loans without specifying userId 
+    const userId = searchParams.get("userId");
+
+    // If user is not admin and trying to get loans without specifying userId
     // or trying to access another user's loans
     if (
-      session.user.role !== 'admin' && 
-      (
-        !userId || 
-        parseInt(userId) !== parseInt(session.user.id as string)
-      )
+      session.user.role !== "admin" &&
+      (!userId || Number(userId) !== Number(session.user.id))
     ) {
       return NextResponse.json(
-        { error: 'Unauthorized to access these loans' },
+        { error: "Unauthorized to access these loans" },
         { status: 403 }
       );
     }
@@ -45,7 +39,7 @@ export async function GET(request: NextRequest) {
     let whereClause = {};
     if (userId) {
       whereClause = {
-        userId: parseInt(userId)
+        userId: parseInt(userId),
       };
     }
 
@@ -63,28 +57,28 @@ export async function GET(request: NextRequest) {
             title: true,
             author: true,
             coverImage: true,
-            stock: true
-          }
+            stock: true,
+          },
         },
         user: {
           select: {
             id: true,
             name: true,
-            email: true
-          }
-        }
+            email: true,
+            profileImage: true, // ✅ FIXED: Added profileImage
+          },
+        },
       },
       orderBy: {
-        createdAt: 'desc'
-      }
+        createdAt: "desc",
+      },
     });
-    
-    
+
     return NextResponse.json(bookLoans);
   } catch (error) {
-    console.error('Error fetching book loans:', error);
+    console.error("Error fetching book loans:", error);
     return NextResponse.json(
-      { error: 'Failed to fetch book loans' },
+      { error: "Failed to fetch book loans" },
       { status: 500 }
     );
   }
@@ -94,39 +88,36 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions);
-    
+
     if (!session) {
-      return NextResponse.json(
-        { error: 'Unauthorized' },
-        { status: 401 }
-      );
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
     const data = await request.json();
     const { bookId, borrowDate, returnDate, notes } = data;
-    
+
     // Validate required fields
     if (!bookId || !borrowDate || !returnDate) {
       return NextResponse.json(
-        { error: 'Book ID, borrow date, and return date are required' },
+        { error: "Book ID, borrow date, and return date are required" },
         { status: 400 }
       );
     }
 
-    const userId = parseInt(session.user.id as string);
+    const userId = session.user.id; // Assuming session.user.id is already a number as implied by the TS error
 
     // Check if user already has an active loan for this book
     const existingLoan = await prisma.bookLoan.findFirst({
       where: {
         userId: userId,
         bookId: bookId,
-        status: { in: ['PENDING', 'APPROVED'] }
-      }
+        status: { in: ["PENDING", "APPROVED"] },
+      },
     });
 
     if (existingLoan) {
       return NextResponse.json(
-        { error: 'Kamu sudah meminjam buku ini dan belum mengembalikannya.' },
+        { error: "Kamu sudah meminjam buku ini dan belum mengembalikannya." },
         { status: 400 }
       );
     }
@@ -134,20 +125,17 @@ export async function POST(request: NextRequest) {
     // Validate the book exists and has stock
     const book = await prisma.book.findUnique({
       where: {
-        id: bookId
-      }
+        id: bookId,
+      },
     });
 
     if (!book) {
-      return NextResponse.json(
-        { error: 'Book not found' },
-        { status: 404 }
-      );
+      return NextResponse.json({ error: "Book not found" }, { status: 404 });
     }
 
     if (book.stock <= 0) {
       return NextResponse.json(
-        { error: 'Book is out of stock' },
+        { error: "Book is out of stock" },
         { status: 400 }
       );
     }
@@ -160,7 +148,7 @@ export async function POST(request: NextRequest) {
         borrowDate: new Date(borrowDate),
         returnDate: new Date(returnDate),
         notes,
-        status: LoanStatus.PENDING
+        status: LoanStatus.PENDING,
       },
       include: {
         book: {
@@ -168,24 +156,25 @@ export async function POST(request: NextRequest) {
             id: true,
             title: true,
             author: true,
-            coverImage: true
-          }
+            coverImage: true,
+          },
         },
         user: {
           select: {
             id: true,
             name: true,
-            email: true
-          }
-        }
-      }
+            email: true,
+            profileImage: true, // ✅ FIXED: Added profileImage
+          },
+        },
+      },
     });
 
     return NextResponse.json(newLoan, { status: 201 });
   } catch (error) {
-    console.error('Error creating book loan:', error);
+    console.error("Error creating book loan:", error);
     return NextResponse.json(
-      { error: 'Failed to create book loan' },
+      { error: "Failed to create book loan" },
       { status: 500 }
     );
   }
@@ -195,28 +184,25 @@ export async function POST(request: NextRequest) {
 export async function PATCH(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions);
-    
+
     if (!session) {
-      return NextResponse.json(
-        { error: 'Unauthorized' },
-        { status: 401 }
-      );
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
     // Only admin can update loan status
-    if (session.user.role !== 'admin') {
+    if (session.user.role !== "admin") {
       return NextResponse.json(
-        { error: 'Only admin can update loan status' },
+        { error: "Only admin can update loan status" },
         { status: 403 }
       );
     }
 
     const data = await request.json();
     const { id, status, actualReturnDate } = data;
-    
+
     if (!id || !status) {
       return NextResponse.json(
-        { error: 'Loan ID and status are required' },
+        { error: "Loan ID and status are required" },
         { status: 400 }
       );
     }
@@ -224,19 +210,16 @@ export async function PATCH(request: NextRequest) {
     // Get the current loan to calculate stock change
     const currentLoan = await prisma.bookLoan.findUnique({
       where: { id },
-      include: { book: true }
+      include: { book: true },
     });
 
     if (!currentLoan) {
-      return NextResponse.json(
-        { error: 'Loan not found' },
-        { status: 404 }
-      );
+      return NextResponse.json({ error: "Loan not found" }, { status: 404 });
     }
 
     // Update the book loan
     const updateData: any = {
-      status
+      status,
     };
 
     if (actualReturnDate) {
@@ -252,21 +235,28 @@ export async function PATCH(request: NextRequest) {
           select: {
             id: true,
             name: true,
-            email: true
-          }
-        }
-      }
+            email: true,
+            profileImage: true, // ✅ FIXED: Added profileImage
+          },
+        },
+      },
     });
 
     // Update book stock based on status change
     let stockChange = 0;
 
     // If status changed to APPROVED, decrease stock
-    if (status === LoanStatus.APPROVED && currentLoan.status !== LoanStatus.APPROVED) {
+    if (
+      status === LoanStatus.APPROVED &&
+      currentLoan.status !== LoanStatus.APPROVED
+    ) {
       stockChange = -1;
     }
     // If status changed from APPROVED to RETURNED, increase stock
-    else if (status === LoanStatus.RETURNED && currentLoan.status === LoanStatus.APPROVED) {
+    else if (
+      status === LoanStatus.RETURNED &&
+      currentLoan.status === LoanStatus.APPROVED
+    ) {
       stockChange = 1;
     }
 
@@ -276,18 +266,18 @@ export async function PATCH(request: NextRequest) {
         where: { id: currentLoan.bookId },
         data: {
           stock: {
-            increment: stockChange
-          }
-        }
+            increment: stockChange,
+          },
+        },
       });
     }
 
     return NextResponse.json(updatedLoan);
   } catch (error) {
-    console.error('Error updating book loan:', error);
+    console.error("Error updating book loan:", error);
     return NextResponse.json(
-      { error: 'Failed to update book loan' },
+      { error: "Failed to update book loan" },
       { status: 500 }
     );
   }
-} 
+}

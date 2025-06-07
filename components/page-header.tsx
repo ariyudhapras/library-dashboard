@@ -13,7 +13,7 @@ interface PageHeaderProps {
   onAddClick?: () => void;
   rightContent?: ReactNode;
   className?: string;
-  variant?: "default" | "centered"; // <--- TAMBAHAN: untuk kontrol layout
+  variant?: "default" | "centered";
 }
 
 export function PageHeader({
@@ -24,7 +24,7 @@ export function PageHeader({
   onAddClick,
   rightContent,
   className,
-  variant = "default", // <--- default fallback
+  variant = "default",
 }: PageHeaderProps) {
   const isCentered = variant === "centered";
 
@@ -32,16 +32,22 @@ export function PageHeader({
     <div
       className={cn(
         isCentered
-          ? "mx-auto rounded-xl shadow p-6 mb-12 text-center"
+          ? // Updated styling untuk konsistensi dengan homepage
+            "relative flex flex-col sm:flex-row items-center justify-center p-4 sm:p-6 lg:p-8 bg-white rounded-xl lg:rounded-2xl shadow-lg mb-4 sm:mb-6"
           : "flex flex-col gap-1 md:flex-row md:items-center md:justify-between",
         className
       )}
     >
-      <div>
+      <div
+        className={cn(
+          isCentered ? "flex flex-col items-center text-center flex-1" : ""
+        )}
+      >
         <h1
           className={cn(
             isCentered
-              ? "text-5xl font-bold mb-4"
+              ? // Updated styling untuk konsistensi dengan homepage
+                "text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-extrabold text-primary-900 mb-2 sm:mb-4 leading-tight"
               : "text-2xl font-semibold sm:text-3xl tracking-tight"
           )}
         >
@@ -51,7 +57,8 @@ export function PageHeader({
           <p
             className={cn(
               isCentered
-                ? "text-lg text-gray-700 dark:text-gray-400 font-semibold mt-2"
+                ? // Updated styling untuk konsistensi dengan homepage
+                  "text-sm sm:text-base md:text-lg lg:text-xl text-gray-700 font-light px-2"
                 : "mt-2 text-sm text-muted-foreground"
             )}
           >
@@ -73,6 +80,15 @@ export function PageHeader({
                 {addButtonLabel}
               </Button>
             ))}
+
+      {/* Support untuk rightContent di variant centered (seperti profile dropdown di homepage) */}
+      {isCentered && rightContent && (
+        <div className="hidden sm:block mt-4 sm:mt-0 sm:absolute sm:right-4 sm:top-1/2 sm:-translate-y-1/2">
+          <div className="flex justify-center sm:justify-end items-center gap-2">
+            {rightContent}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

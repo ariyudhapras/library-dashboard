@@ -1,6 +1,5 @@
-import * as React from "react"
-
-import { cn } from "@/lib/utils"
+import * as React from "react";
+import { cn } from "@/lib/utils";
 
 const Table = React.forwardRef<
   HTMLTableElement,
@@ -9,20 +8,30 @@ const Table = React.forwardRef<
   <div className="relative w-full overflow-auto">
     <table
       ref={ref}
-      className={cn("w-full caption-bottom text-sm", className)}
+      className={cn(
+        "w-full caption-bottom text-base border-collapse", // Increased from text-sm to text-base
+        className
+      )}
       {...props}
     />
   </div>
-))
-Table.displayName = "Table"
+));
+Table.displayName = "Table";
 
 const TableHeader = React.forwardRef<
   HTMLTableSectionElement,
   React.HTMLAttributes<HTMLTableSectionElement>
 >(({ className, ...props }, ref) => (
-  <thead ref={ref} className={cn("[&_tr]:border-b", className)} {...props} />
-))
-TableHeader.displayName = "TableHeader"
+  <thead
+    ref={ref}
+    className={cn(
+      "bg-gray-50 border-b-2 border-gray-200", // Enhanced header styling with stronger border
+      className
+    )}
+    {...props}
+  />
+));
+TableHeader.displayName = "TableHeader";
 
 const TableBody = React.forwardRef<
   HTMLTableSectionElement,
@@ -30,11 +39,15 @@ const TableBody = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <tbody
     ref={ref}
-    className={cn("[&_tr:last-child]:border-0", className)}
+    className={cn(
+      "divide-y divide-gray-100 bg-white", // Better row separation
+      "[&_tr:last-child]:border-0",
+      className
+    )}
     {...props}
   />
-))
-TableBody.displayName = "TableBody"
+));
+TableBody.displayName = "TableBody";
 
 const TableFooter = React.forwardRef<
   HTMLTableSectionElement,
@@ -43,13 +56,14 @@ const TableFooter = React.forwardRef<
   <tfoot
     ref={ref}
     className={cn(
-      "border-t bg-muted/50 font-medium [&>tr]:last:border-b-0",
+      "border-t-2 border-gray-200 bg-gray-50 font-semibold", // Enhanced footer with stronger border
+      "[&>tr]:last:border-b-0",
       className
     )}
     {...props}
   />
-))
-TableFooter.displayName = "TableFooter"
+));
+TableFooter.displayName = "TableFooter";
 
 const TableRow = React.forwardRef<
   HTMLTableRowElement,
@@ -58,13 +72,16 @@ const TableRow = React.forwardRef<
   <tr
     ref={ref}
     className={cn(
-      "border-b transition-colors hover:bg-muted/50 data-[state=selected]:bg-muted",
+      "border-b border-gray-100 transition-all duration-200", // Smooth transitions
+      "hover:bg-blue-50 hover:shadow-sm", // Enhanced hover state
+      "data-[state=selected]:bg-blue-100", // Better selection state
+      "group", // For group hover effects
       className
     )}
     {...props}
   />
-))
-TableRow.displayName = "TableRow"
+));
+TableRow.displayName = "TableRow";
 
 const TableHead = React.forwardRef<
   HTMLTableCellElement,
@@ -73,13 +90,18 @@ const TableHead = React.forwardRef<
   <th
     ref={ref}
     className={cn(
-      "h-12 px-4 text-left align-middle font-medium text-muted-foreground [&:has([role=checkbox])]:pr-0",
+      "h-14 px-8 py-4 text-left align-middle", // Increased height and padding significantly
+      "font-bold text-base text-gray-800", // Larger font, bolder weight, better color
+      "tracking-wide", // Better letter spacing
+      "[&:has([role=checkbox])]:pr-0",
+      "first:pl-8 last:pr-8", // Consistent generous edge padding
+      "bg-gray-50", // Consistent background
       className
     )}
     {...props}
   />
-))
-TableHead.displayName = "TableHead"
+));
+TableHead.displayName = "TableHead";
 
 const TableCell = React.forwardRef<
   HTMLTableCellElement,
@@ -87,11 +109,20 @@ const TableCell = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <td
     ref={ref}
-    className={cn("p-4 align-middle [&:has([role=checkbox])]:pr-0", className)}
+    className={cn(
+      "px-8 py-6 align-middle", // Significantly increased padding for better readability
+      "text-base text-gray-900", // Larger text size and better color
+      "leading-relaxed", // Better line height for readability
+      "[&:has([role=checkbox])]:pr-0",
+      "first:pl-8 last:pr-8", // Consistent generous edge padding
+      "group-hover:text-gray-900", // Ensure text stays readable on hover
+      "transition-colors duration-200", // Smooth color transitions
+      className
+    )}
     {...props}
   />
-))
-TableCell.displayName = "TableCell"
+));
+TableCell.displayName = "TableCell";
 
 const TableCaption = React.forwardRef<
   HTMLTableCaptionElement,
@@ -99,11 +130,14 @@ const TableCaption = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <caption
     ref={ref}
-    className={cn("mt-4 text-sm text-muted-foreground", className)}
+    className={cn(
+      "mt-6 text-base text-gray-600 text-center font-medium", // Larger caption with better spacing
+      className
+    )}
     {...props}
   />
-))
-TableCaption.displayName = "TableCaption"
+));
+TableCaption.displayName = "TableCaption";
 
 export {
   Table,
@@ -114,4 +148,4 @@ export {
   TableRow,
   TableCell,
   TableCaption,
-}
+};

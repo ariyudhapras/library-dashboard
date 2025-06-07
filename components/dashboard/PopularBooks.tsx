@@ -24,14 +24,18 @@ export function PopularBooks({
 }: PopularBooksProps) {
   if (loading) {
     return (
-      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
-        {Array.from({ length: 5 }).map((_, i) => (
-          <div key={i} className="space-y-3">
-            <Skeleton className="h-48 w-full rounded-lg" />
-            <Skeleton className="h-4 w-3/4" />
-            <Skeleton className="h-4 w-1/2" />
-          </div>
-        ))}
+      <div className="flex justify-center w-full">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 max-w-4xl">
+          {Array.from({ length: 3 }).map((_, i) => (
+            <div key={i} className="flex justify-center">
+              <div className="w-44 space-y-3">
+                <Skeleton className="h-48 w-full rounded-lg" />
+                <Skeleton className="h-4 w-3/4 mx-auto" />
+                <Skeleton className="h-4 w-1/2 mx-auto" />
+              </div>
+            </div>
+          ))}
+        </div>
       </div>
     );
   }
@@ -43,41 +47,27 @@ export function PopularBooks({
           <Book className="h-8 w-8 text-gray-400" />
         </div>
         <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-2">
-          Belum ada buku populer
+          No Popular Books Yet
         </h3>
         <p className="text-sm text-gray-500 dark:text-gray-400 max-w-sm">
-          Jadilah yang pertama meminjam buku dari koleksi kami!
+          Be the first to borrow books from our collection!
         </p>
       </div>
     );
   }
 
-  // Hanya tampilkan 3 buku populer
+  // Hanya tampilkan 3 buku populer teratas
   const topBooks = books.slice(0, 3);
+
   return (
-    <div className="max-w-screen-xl mx-auto">
-      {/* Desktop grid, 3 kolom, card besar */}
-      <div className="hidden md:grid grid-cols-3 gap-6">
+    <div className="flex justify-center w-full">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 max-w-4xl">
         {topBooks.map((book, i) => (
-          <div className="flex justify-center" key={book.id}>
+          <div key={book.id} className="flex justify-center">
             <PopularBookCard
               book={book}
               rank={i + 1}
-              large
-              cardWidth="w-56 md:w-72"
-            />
-          </div>
-        ))}
-      </div>
-      {/* Mobile: card rata tengah, lebar fit container, hanya 3 buku */}
-      <div className="flex md:hidden flex-col items-center gap-6 px-4 pb-2">
-        {topBooks.map((book, i) => (
-          <div className="w-full max-w-sm" key={book.id}>
-            <PopularBookCard
-              book={book}
-              rank={i + 1}
-              large
-              cardWidth="w-full max-w-sm"
+              onClick={() => onBookClick?.(book)}
             />
           </div>
         ))}

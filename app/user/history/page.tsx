@@ -6,7 +6,7 @@ import { PageHeader } from "@/components/page-header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { format } from "date-fns";
-import { id } from "date-fns/locale";
+import { enUS } from "date-fns/locale";
 import {
   Table,
   TableBody,
@@ -15,7 +15,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Loader2, Search, Calendar, Book } from "lucide-react";
+import { Loader2, Search, Calendar, BookOpen, FilterX } from "lucide-react";
 import { toast } from "sonner";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -66,8 +66,6 @@ export default function HistoryPage() {
 
       try {
         setIsLoading(true);
-        // Fetch all loans for this user - no status filtering - all statuses should be shown
-        // including PENDING, APPROVED, REJECTED, RETURNED, and LATE
         const response = await fetch(
           `/api/bookloans?userId=${session.user.id}`
         );
@@ -80,7 +78,7 @@ export default function HistoryPage() {
         setBookLoans(data);
       } catch (error) {
         console.error("Error fetching book loans:", error);
-        toast.error("Gagal memuat data riwayat peminjaman");
+        toast.error("Failed to load loan history");
       } finally {
         setIsLoading(false);
       }
@@ -91,42 +89,54 @@ export default function HistoryPage() {
     }
   }, [session]);
 
-  // Get status badge
+  // Get status badge - same styling as Active Loans
   const getStatusBadge = (status: string) => {
+    const baseClasses = "px-4 py-2 text-base font-semibold rounded-full";
+
     switch (status) {
       case "PENDING":
         return (
-          <Badge color="yellow" className="border border-yellow-200">
-            Menunggu
+          <Badge
+            className={`${baseClasses} bg-yellow-100 text-yellow-800 hover:bg-yellow-200`}
+          >
+            Pending
           </Badge>
         );
       case "APPROVED":
         return (
-          <Badge color="green" className="border border-green-200">
-            Disetujui
+          <Badge
+            className={`${baseClasses} bg-green-100 text-green-800 hover:bg-green-200`}
+          >
+            Approved
           </Badge>
         );
       case "REJECTED":
         return (
-          <Badge color="red" className="border border-red-200">
-            Ditolak
+          <Badge
+            className={`${baseClasses} bg-red-100 text-red-800 hover:bg-red-200`}
+          >
+            Rejected
           </Badge>
         );
       case "RETURNED":
         return (
-          <Badge color="blue" className="border border-blue-200">
-            Dikembalikan
+          <Badge
+            className={`${baseClasses} bg-blue-100 text-blue-800 hover:bg-blue-200`}
+          >
+            Returned
           </Badge>
         );
       case "LATE":
         return (
-          <Badge color="gray" className="border border-purple-200">
-            Terlambat
+          <Badge
+            className={`${baseClasses} bg-purple-100 text-purple-800 hover:bg-purple-200`}
+          >
+            Overdue
           </Badge>
         );
       default:
         return (
-          <Badge color="gray" className="border border-gray-200">
+          <Badge className={`${baseClasses} bg-gray-100 text-gray-800`}>
             {status}
           </Badge>
         );
@@ -134,11 +144,11 @@ export default function HistoryPage() {
   };
 
   // Filter loans based on search query and status filter
-  // Note: this only filters the display, all loan statuses are still loaded from API
   const filteredLoans = bookLoans.filter(
     (loan) =>
       (statusFilter === "all" || loan.status === statusFilter) &&
-      loan.book.title.toLowerCase().includes(searchQuery.toLowerCase())
+      (loan.book.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        loan.book.author.toLowerCase().includes(searchQuery.toLowerCase()))
   );
 
   // Calculate fine if book is returned late
@@ -147,39 +157,48 @@ export default function HistoryPage() {
       const returnDate = new Date(loan.returnDate);
       const actualReturnDate = new Date(loan.actualReturnDate);
 
-      // If the actual return date is after the due date
       if (actualReturnDate > returnDate) {
         const diffInDays = Math.ceil(
           (actualReturnDate.getTime() - returnDate.getTime()) /
             (1000 * 60 * 60 * 24)
         );
-        // Assume fine is Rp 5,000 per day
-        return `Denda: Rp ${(diffInDays * 5000).toLocaleString("id-ID")}`;
+        return diffInDays * 5000; // Rp 5,000 per day
       }
     }
-    return null;
+    return 0;
+  };
+
+  const resetFilters = () => {
+    setSearchQuery("");
+    setStatusFilter("all");
   };
 
   return (
-    <div className="w-full mx-auto px-4 py-8 flex flex-col gap-6">
-      <PageHeader title="Daftar Riwayat Peminjaman" variant="centered" />
-      <Card>
-        <CardContent>
-          <div className="mb-4 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-            <div className="relative w-full sm:max-w-xs">
-              <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+    <div className="w-full mx-auto flex flex-col gap-8 p-6">
+      <PageHeader
+        title="Loan History"
+        description="View your complete borrowing history and track past transactions."
+        variant="centered"
+      />
+
+      <Card className="shadow-xl">
+        <CardContent className="space-y-8">
+          {/* Enhanced Filter Section */}
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between p-6 bg-gray-50 rounded-xl">
+            <div className="relative flex-1 max-w-md">
+              <Search className="absolute left-3 top-3 h-5 w-5 text-gray-400" />
               <Input
                 type="search"
-                placeholder="Cari judul buku..."
-                className="w-full pl-8"
+                placeholder="Search by book title or author..."
+                className="pl-10 text-base py-3"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
               />
             </div>
-            <div className="flex w-full items-center gap-2 sm:w-auto">
+            <div className="flex items-center gap-3">
               <Select value={statusFilter} onValueChange={setStatusFilter}>
-                <SelectTrigger className="w-full sm:w-[180px]">
-                  <SelectValue placeholder="Filter status" />
+                <SelectTrigger className="w-full sm:w-[200px] text-base py-3">
+                  <SelectValue placeholder="Filter by status" />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All Status</SelectItem>
@@ -187,120 +206,178 @@ export default function HistoryPage() {
                   <SelectItem value="APPROVED">Approved</SelectItem>
                   <SelectItem value="REJECTED">Rejected</SelectItem>
                   <SelectItem value="RETURNED">Returned</SelectItem>
-                  <SelectItem value="LATE">Late</SelectItem>
+                  <SelectItem value="LATE">Overdue</SelectItem>
                 </SelectContent>
               </Select>
               <Button
                 variant="outline"
-                size="icon"
-                onClick={() => {
-                  setSearchQuery("");
-                  setStatusFilter("all");
-                }}
-                title="Reset filter"
+                onClick={resetFilters}
+                className="text-base px-4 py-3"
+                title="Reset filters"
               >
-                <Calendar className="h-4 w-4" />
+                <FilterX className="h-5 w-5 mr-2" />
+                Reset
               </Button>
             </div>
           </div>
 
+          {/* Results Summary */}
+          {!isLoading && (
+            <div className="text-base text-gray-600 px-2">
+              Showing{" "}
+              <span className="font-semibold">{filteredLoans.length}</span> of{" "}
+              <span className="font-semibold">{bookLoans.length}</span> loans
+            </div>
+          )}
+
           {isLoading ? (
-            <div className="flex justify-center items-center p-8">
-              <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+            <div className="flex justify-center items-center py-16">
+              <div className="text-center">
+                <Loader2 className="h-12 w-12 animate-spin text-primary mx-auto mb-6" />
+                <p className="text-lg text-gray-600">Loading your history...</p>
+              </div>
             </div>
           ) : filteredLoans.length === 0 ? (
-            <div className="text-center py-8 text-muted-foreground">
-              Tidak ada data riwayat peminjaman
+            <div className="text-center py-16">
+              <BookOpen className="h-16 w-16 text-gray-400 mx-auto mb-6" />
+              <h3 className="text-xl font-semibold text-gray-900 mb-3">
+                {bookLoans.length === 0
+                  ? "No Loan History"
+                  : "No Results Found"}
+              </h3>
+              <p className="text-lg text-gray-600">
+                {bookLoans.length === 0
+                  ? "You haven't borrowed any books yet."
+                  : "Try adjusting your search or filter criteria."}
+              </p>
+              {bookLoans.length > 0 && (
+                <Button
+                  variant="outline"
+                  onClick={resetFilters}
+                  className="mt-4 text-base px-6 py-3"
+                >
+                  Clear Filters
+                </Button>
+              )}
             </div>
           ) : (
-            <div className="space-y-4">
-              {filteredLoans.map((loan) => (
-                <Card
-                  key={loan.id}
-                  className="overflow-hidden border shadow-sm"
-                >
-                  <CardContent className="p-4 flex gap-4">
-                    <div className="h-20 w-16 bg-muted rounded overflow-hidden flex-shrink-0 flex items-center justify-center">
-                      {loan.book.coverImage ? (
-                        <img
-                          src={loan.book.coverImage}
-                          alt={loan.book.title}
-                          className="h-full w-full object-cover"
-                        />
-                      ) : (
-                        <Book className="h-8 w-8 text-muted-foreground" />
-                      )}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center justify-between mb-1">
-                        <h3 className="font-semibold truncate max-w-[70%]">
-                          {loan.book.title}
-                        </h3>
-                        {getStatusBadge(loan.status)}
-                      </div>
-                      <div className="text-sm text-muted-foreground truncate">
-                        {loan.book.author}
-                      </div>
-                      <div className="mt-2 space-y-1 text-sm">
-                        <div className="flex justify-between">
-                          <span className="text-muted-foreground">
-                            Tanggal Pinjam:
-                          </span>
-                          <span>
-                            {format(new Date(loan.borrowDate), "d MMM yyyy", {
-                              locale: id,
-                            })}
-                          </span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span className="text-muted-foreground">
-                            Tanggal Kembali:
-                          </span>
-                          <span>
-                            {format(new Date(loan.returnDate), "d MMM yyyy", {
-                              locale: id,
-                            })}
-                          </span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span className="text-muted-foreground">
-                            Tanggal Aktual Kembali:
-                          </span>
-                          <span>
-                            {loan.actualReturnDate
-                              ? format(
-                                  new Date(loan.actualReturnDate),
-                                  "d MMM yyyy",
-                                  { locale: id }
-                                )
-                              : "-"}
-                          </span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span className="text-muted-foreground">
-                            Catatan:
-                          </span>
-                          <span className="truncate max-w-[120px]">
-                            {loan.notes || "-"}
-                          </span>
-                        </div>
-                        {calculateFine(loan) && (
-                          <div className="flex justify-between text-red-600">
-                            <span className="font-medium">Denda:</span>
-                            <span className="font-medium">
-                              {calculateFine(loan)?.split(": ")[1]}
-                            </span>
+            <div className="rounded-xl border border-gray-200 overflow-hidden shadow-lg">
+              {/* Using Enhanced Table Component */}
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Book Details</TableHead>
+                    <TableHead>Borrow Date</TableHead>
+                    <TableHead>Due Date</TableHead>
+                    <TableHead>Return Date</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead>Fine</TableHead>
+                    <TableHead>Notes</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {filteredLoans.map((loan, index) => {
+                    const fine = calculateFine(loan);
+                    return (
+                      <TableRow key={loan.id}>
+                        <TableCell>
+                          <div className="flex items-center gap-6">
+                            <div className="h-20 w-16 bg-gray-200 rounded-xl overflow-hidden flex-shrink-0 shadow-md">
+                              {loan.book.coverImage ? (
+                                <img
+                                  src={loan.book.coverImage}
+                                  alt={loan.book.title}
+                                  className="h-full w-full object-cover"
+                                />
+                              ) : (
+                                <div className="h-full w-full bg-gradient-to-br from-blue-400 to-blue-600 flex items-center justify-center">
+                                  <BookOpen className="h-8 w-8 text-white" />
+                                </div>
+                              )}
+                            </div>
+                            <div className="min-w-0 flex-1">
+                              <h4 className="text-lg font-bold text-gray-900 line-clamp-2 mb-2">
+                                {loan.book.title}
+                              </h4>
+                              <p className="text-base text-gray-600">
+                                by {loan.book.author}
+                              </p>
+                            </div>
                           </div>
-                        )}
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex items-center gap-3">
+                            <Calendar className="h-5 w-5 text-gray-500" />
+                            {format(new Date(loan.borrowDate), "MMM dd, yyyy", {
+                              locale: enUS,
+                            })}
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex items-center gap-3">
+                            <Calendar className="h-5 w-5 text-gray-500" />
+                            {format(new Date(loan.returnDate), "MMM dd, yyyy", {
+                              locale: enUS,
+                            })}
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          {loan.actualReturnDate ? (
+                            <div className="flex items-center gap-3">
+                              <Calendar className="h-5 w-5 text-gray-500" />
+                              {format(
+                                new Date(loan.actualReturnDate),
+                                "MMM dd, yyyy",
+                                { locale: enUS }
+                              )}
+                            </div>
+                          ) : (
+                            <span className="text-gray-400 italic">
+                              Not returned
+                            </span>
+                          )}
+                        </TableCell>
+                        <TableCell>{getStatusBadge(loan.status)}</TableCell>
+                        <TableCell>
+                          {fine > 0 ? (
+                            <div className="text-red-600 font-semibold">
+                              ${fine.toLocaleString()}
+                            </div>
+                          ) : (
+                            <span className="text-gray-400">-</span>
+                          )}
+                        </TableCell>
+                        <TableCell className="max-w-[200px]">
+                          <p className="truncate text-gray-600">
+                            {loan.notes || "No notes"}
+                          </p>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
             </div>
           )}
         </CardContent>
       </Card>
+
+      {/* Mobile scroll helper */}
+      <div className="block md:hidden text-sm text-center text-muted-foreground mt-4 select-none">
+        <span className="inline-flex items-center gap-2">
+          <svg
+            width="18"
+            height="18"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            viewBox="0 0 24 24"
+          >
+            <path d="M5 12h14M13 18l6-6-6-6" />
+          </svg>
+          Swipe right to see more details
+        </span>
+      </div>
     </div>
   );
 }

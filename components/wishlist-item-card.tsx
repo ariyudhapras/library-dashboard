@@ -1,19 +1,25 @@
-import { Trash2 } from "lucide-react"
-import Image from "next/image"
-import { Button } from "@/components/ui/button"
-import { useToast } from "@/components/ui/use-toast"
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
-import { useState, useEffect } from "react"
-import { cn } from "@/lib/utils"
+import { Trash2 } from "lucide-react";
+import Image from "next/image";
+import { Button } from "@/components/ui/button";
+import { useToast } from "@/components/ui/use-toast";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
+import { useState, useEffect } from "react";
+import { cn } from "@/lib/utils";
 
 interface WishlistItemCardProps {
-  id: string
-  title: string
-  author?: string
-  coverUrl: string
-  onRemove: (id: string) => void
-  className?: string
-  isRemoving?: boolean
+  id: string;
+  title: string;
+  author?: string;
+  coverUrl: string;
+  onRemove: (id: string) => void;
+  className?: string;
+  isRemoving?: boolean;
 }
 
 export default function WishlistItemCard({
@@ -25,42 +31,42 @@ export default function WishlistItemCard({
   className,
   isRemoving = false,
 }: WishlistItemCardProps) {
-  const { toast } = useToast()
-  const [isDialogOpen, setIsDialogOpen] = useState(false)
-  const [isLoading, setIsLoading] = useState(false)
-  const [hide, setHide] = useState(false)
+  const { toast } = useToast();
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [hide, setHide] = useState(false);
 
   useEffect(() => {
     if (isRemoving) {
       // Start fade-out, then hide after animation
-      const timeout = setTimeout(() => setHide(true), 350)
-      return () => clearTimeout(timeout)
+      const timeout = setTimeout(() => setHide(true), 350);
+      return () => clearTimeout(timeout);
     } else {
-      setHide(false)
+      setHide(false);
     }
-  }, [isRemoving])
+  }, [isRemoving]);
 
-  if (hide) return null
+  if (hide) return null;
 
   const handleRemove = async () => {
-    setIsLoading(true)
+    setIsLoading(true);
     try {
-      await onRemove(id)
+      await onRemove(id);
       toast({
         title: "Berhasil",
         description: "Buku berhasil dihapus dari wishlist",
-      })
-      setIsDialogOpen(false)
+      });
+      setIsDialogOpen(false);
     } catch (error) {
       toast({
         title: "Gagal",
         description: "Gagal menghapus buku dari wishlist",
         variant: "destructive",
-      })
+      });
     } finally {
-      setIsLoading(false)
+      setIsLoading(false);
     }
-  }
+  };
 
   return (
     <div
@@ -70,7 +76,15 @@ export default function WishlistItemCard({
         isRemoving && "opacity-0 max-h-0 pointer-events-none",
         className
       )}
-      style={isRemoving ? { transition: 'opacity 0.3s, max-height 0.35s', maxHeight: 0, opacity: 0 } : {}}
+      style={
+        isRemoving
+          ? {
+              transition: "opacity 0.3s, max-height 0.35s",
+              maxHeight: 0,
+              opacity: 0,
+            }
+          : {}
+      }
       role="article"
       aria-labelledby={`wishlist-title-${id}`}
     >
@@ -85,11 +99,16 @@ export default function WishlistItemCard({
       </div>
       <div className="p-4 flex flex-col flex-1 justify-between">
         <div>
-          <h3 id={`wishlist-title-${id}`} className="font-semibold line-clamp-2 text-lg">
+          <h3
+            id={`wishlist-title-${id}`}
+            className="font-semibold line-clamp-2 text-lg"
+          >
             {title}
           </h3>
           {author && (
-            <p className="mt-1 text-sm text-muted-foreground">Karya: {author}</p>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Author: {author}
+            </p>
           )}
         </div>
         <Button
@@ -110,15 +129,25 @@ export default function WishlistItemCard({
           </DialogHeader>
           <p>Apakah Anda yakin ingin menghapus buku ini dari wishlist?</p>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setIsDialogOpen(false)} disabled={isLoading} aria-label="Batal hapus wishlist">
+            <Button
+              variant="outline"
+              onClick={() => setIsDialogOpen(false)}
+              disabled={isLoading}
+              aria-label="Batal hapus wishlist"
+            >
               Batal
             </Button>
-            <Button variant="destructive" onClick={handleRemove} disabled={isLoading} aria-label="Konfirmasi hapus wishlist">
+            <Button
+              variant="destructive"
+              onClick={handleRemove}
+              disabled={isLoading}
+              aria-label="Konfirmasi hapus wishlist"
+            >
               {isLoading ? "Menghapus..." : "Ya, Hapus"}
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>
-  )
-} 
+  );
+}

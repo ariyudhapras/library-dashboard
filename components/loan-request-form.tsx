@@ -1,17 +1,28 @@
-"use client"
+"use client";
 
-import { useState } from "react"
-import { useRouter } from "next/navigation"
-import { format } from "date-fns"
-import { id } from "date-fns/locale"
-import { CalendarIcon, Check, Loader2 } from "lucide-react"
-import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
-import { Calendar } from "@/components/ui/calendar"
-import { cn } from "@/lib/utils"
+import { useState } from "react";
+import { useRouter } from "next/navigation";
+import { format } from "date-fns";
+import { id } from "date-fns/locale";
+import { CalendarIcon, Check, Loader2 } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import { Calendar } from "@/components/ui/calendar";
+import { cn } from "@/lib/utils";
 import {
   Select,
   SelectContent,
@@ -20,12 +31,31 @@ import {
   SelectLabel,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select"
-import { useToast } from "@/components/ui/use-toast"
-import { Toaster } from "@/components/ui/toaster"
+} from "@/components/ui/select";
+import { useToast } from "@/components/ui/use-toast";
+import { Toaster } from "@/components/ui/toaster";
+
+// Types
+interface Book {
+  id: number;
+  title: string;
+  author: string;
+}
+
+interface FormData {
+  memberName: string;
+  bookId: string;
+  requestDate: Date;
+}
+
+interface FormErrors {
+  memberName: string;
+  bookId: string;
+  requestDate: string;
+}
 
 // Sample book data for dropdown
-const books = [
+const books: Book[] = [
   { id: 1, title: "Laskar Pelangi", author: "Andrea Hirata" },
   { id: 2, title: "Bumi Manusia", author: "Pramoedya Ananta Toer" },
   { id: 3, title: "Filosofi Teras", author: "Henry Manampiring" },
@@ -36,145 +66,156 @@ const books = [
   { id: 8, title: "Ayat-Ayat Cinta", author: "Habiburrahman El Shirazy" },
   { id: 9, title: "Dilan: Dia adalah Dilanku Tahun 1990", author: "Pidi Baiq" },
   { id: 10, title: "Hujan", author: "Tere Liye" },
-]
+];
 
-export default function LoanRequestForm() {
-  const router = useRouter()
-  const { toast } = useToast()
-  const today = new Date()
+export default function LoanRequestForm(): JSX.Element {
+  const router = useRouter();
+  const { toast } = useToast();
+  const today = new Date();
 
-  const [formData, setFormData] = useState({
+  const [formData, setFormData] = useState<FormData>({
     memberName: "",
     bookId: "",
     requestDate: today,
-  })
-  const [errors, setErrors] = useState({
+  });
+
+  const [errors, setErrors] = useState<FormErrors>({
     memberName: "",
     bookId: "",
     requestDate: "",
-  })
-  const [isSubmitting, setIsSubmitting] = useState(false)
+  });
 
-  const handleInputChange = (e) => {
-    const { name, value } = e.target
+  const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>): void => {
+    const { name, value } = e.target;
     setFormData({
       ...formData,
       [name]: value,
-    })
+    });
     // Clear error when user types
-    if (errors[name]) {
+    if (errors[name as keyof FormErrors]) {
       setErrors({
         ...errors,
         [name]: "",
-      })
+      } as FormErrors);
     }
-  }
+  };
 
-  const handleBookChange = (value) => {
+  const handleBookChange = (value: string): void => {
     setFormData({
       ...formData,
       bookId: value,
-    })
+    });
     // Clear error when user selects
     if (errors.bookId) {
       setErrors({
         ...errors,
         bookId: "",
-      })
+      });
     }
-  }
+  };
 
-  const handleDateChange = (date) => {
-    setFormData({
-      ...formData,
-      requestDate: date,
-    })
-    // Clear error when user selects
-    if (errors.requestDate) {
-      setErrors({
-        ...errors,
-        requestDate: "",
-      })
+  const handleDateChange = (date: Date | undefined): void => {
+    if (date) {
+      setFormData({
+        ...formData,
+        requestDate: date,
+      });
+      // Clear error when user selects
+      if (errors.requestDate) {
+        setErrors({
+          ...errors,
+          requestDate: "",
+        });
+      }
     }
-  }
+  };
 
-  const validateForm = () => {
-    const newErrors = {
+  const validateForm = (): boolean => {
+    const newErrors: FormErrors = {
       memberName: "",
       bookId: "",
       requestDate: "",
-    }
-    let isValid = true
+    };
+    let isValid = true;
 
     if (!formData.memberName.trim()) {
-      newErrors.memberName = "Nama anggota harus diisi"
-      isValid = false
+      newErrors.memberName = "Nama anggota harus diisi";
+      isValid = false;
     }
 
     if (!formData.bookId) {
-      newErrors.bookId = "Judul buku harus dipilih"
-      isValid = false
+      newErrors.bookId = "Judul buku harus dipilih";
+      isValid = false;
     }
 
     if (!formData.requestDate) {
-      newErrors.requestDate = "Tanggal pengajuan harus diisi"
-      isValid = false
+      newErrors.requestDate = "Tanggal pengajuan harus diisi";
+      isValid = false;
     }
 
-    setErrors(newErrors)
-    return isValid
-  }
+    setErrors(newErrors);
+    return isValid;
+  };
 
-  const handleSubmit = async (e) => {
-    e.preventDefault()
+  const handleSubmit = async (
+    e: React.FormEvent<HTMLFormElement>
+  ): Promise<void> => {
+    e.preventDefault();
 
     if (!validateForm()) {
-      return
+      return;
     }
 
-    setIsSubmitting(true)
+    setIsSubmitting(true);
 
     try {
       // Simulate API call
-      await new Promise((resolve) => setTimeout(resolve, 1500))
+      await new Promise<void>((resolve) => setTimeout(resolve, 1500));
 
       // Show success toast
       toast({
         title: "Pengajuan Berhasil",
         description: "Pengajuan peminjaman buku Anda telah berhasil diajukan.",
         variant: "default",
-      })
+      });
 
       // Reset form
       setFormData({
         memberName: "",
         bookId: "",
         requestDate: today,
-      })
+      });
 
       // Redirect after a short delay
       setTimeout(() => {
-        router.push("/user/beranda")
-      }, 2000)
+        router.push("/user/beranda");
+      }, 2000);
     } catch (error) {
       toast({
         title: "Pengajuan Gagal",
-        description: "Terjadi kesalahan saat mengajukan peminjaman. Silakan coba lagi.",
+        description:
+          "Terjadi kesalahan saat mengajukan peminjaman. Silakan coba lagi.",
         variant: "destructive",
-      })
+      });
     } finally {
-      setIsSubmitting(false)
+      setIsSubmitting(false);
     }
-  }
+  };
 
-  const selectedBook = books.find((book) => book.id.toString() === formData.bookId)
+  const selectedBook: Book | undefined = books.find(
+    (book) => book.id.toString() === formData.bookId
+  );
 
   return (
     <>
       <Card className="shadow-md">
         <CardHeader>
           <CardTitle>Pengajuan Peminjaman Buku</CardTitle>
-          <CardDescription>Silakan isi form berikut untuk mengajukan peminjaman buku.</CardDescription>
+          <CardDescription>
+            Silakan isi form berikut untuk mengajukan peminjaman buku.
+          </CardDescription>
         </CardHeader>
         <form onSubmit={handleSubmit}>
           <CardContent className="space-y-6">
@@ -190,7 +231,9 @@ export default function LoanRequestForm() {
                 onChange={handleInputChange}
                 className={errors.memberName ? "border-red-500" : ""}
               />
-              {errors.memberName && <p className="text-sm text-red-500">{errors.memberName}</p>}
+              {errors.memberName && (
+                <p className="text-sm text-red-500">{errors.memberName}</p>
+              )}
             </div>
 
             <div className="space-y-2">
@@ -198,7 +241,10 @@ export default function LoanRequestForm() {
                 Judul Buku <span className="text-red-500">*</span>
               </Label>
               <Select value={formData.bookId} onValueChange={handleBookChange}>
-                <SelectTrigger id="bookId" className={errors.bookId ? "border-red-500" : ""}>
+                <SelectTrigger
+                  id="bookId"
+                  className={errors.bookId ? "border-red-500" : ""}
+                >
                   <SelectValue placeholder="Pilih judul buku" />
                 </SelectTrigger>
                 <SelectContent>
@@ -212,7 +258,9 @@ export default function LoanRequestForm() {
                   </SelectGroup>
                 </SelectContent>
               </Select>
-              {errors.bookId && <p className="text-sm text-red-500">{errors.bookId}</p>}
+              {errors.bookId && (
+                <p className="text-sm text-red-500">{errors.bookId}</p>
+              )}
             </div>
 
             <div className="space-y-2">
@@ -226,7 +274,7 @@ export default function LoanRequestForm() {
                     id="requestDate"
                     className={cn(
                       "w-full justify-start text-left font-normal",
-                      errors.requestDate ? "border-red-500" : "",
+                      errors.requestDate ? "border-red-500" : ""
                     )}
                   >
                     <CalendarIcon className="mr-2 h-4 w-4" />
@@ -247,17 +295,21 @@ export default function LoanRequestForm() {
                   />
                 </PopoverContent>
               </Popover>
-              {errors.requestDate && <p className="text-sm text-red-500">{errors.requestDate}</p>}
+              {errors.requestDate && (
+                <p className="text-sm text-red-500">{errors.requestDate}</p>
+              )}
             </div>
 
             {selectedBook && (
               <div className="rounded-md bg-muted p-4">
                 <h4 className="mb-2 font-medium">Detail Buku</h4>
                 <p className="text-sm">
-                  <span className="font-medium">Judul:</span> {selectedBook.title}
+                  <span className="font-medium">Judul:</span>{" "}
+                  {selectedBook.title}
                 </p>
                 <p className="text-sm">
-                  <span className="font-medium">Penulis:</span> {selectedBook.author}
+                  <span className="font-medium">Penulis:</span>{" "}
+                  {selectedBook.author}
                 </p>
               </div>
             )}
@@ -272,7 +324,11 @@ export default function LoanRequestForm() {
             >
               Batal
             </Button>
-            <Button type="submit" className="w-full sm:w-auto" disabled={isSubmitting}>
+            <Button
+              type="submit"
+              className="w-full sm:w-auto"
+              disabled={isSubmitting}
+            >
               {isSubmitting ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -290,5 +346,5 @@ export default function LoanRequestForm() {
       </Card>
       <Toaster />
     </>
-  )
+  );
 }

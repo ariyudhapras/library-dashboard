@@ -106,7 +106,7 @@ export default function WishlistPage() {
     <div className="mx-auto px-4 py-8">
       <PageHeader
         title="My Wishlist"
-        description="Kumpulan buku yang Anda simpan untuk dibaca nanti"
+        description="The collection of books you've saved to read later."
         variant="centered"
       />
 

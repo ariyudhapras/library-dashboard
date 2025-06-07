@@ -1,73 +1,93 @@
 import Link from "next/link";
 
+interface Book {
+  id: number;
+  title: string;
+  author: string;
+  borrowCount: number;
+  coverImage?: string | null;
+}
+
+interface PopularBookCardProps {
+  book: Book;
+  rank: number;
+  onClick?: () => void;
+}
+
 export default function PopularBookCard({
   book,
   rank,
-  large = false,
-  cardWidth,
-}: {
-  book: any;
-  rank: number;
-  large?: boolean;
-  cardWidth?: string;
-}) {
-  const rankBadge = [
-    { icon: "🥇", color: "bg-yellow-400" },
-    { icon: "🥈", color: "bg-gray-300" },
-    { icon: "🥉", color: "bg-amber-700" },
-  ][rank - 1];
+  onClick,
+}: PopularBookCardProps) {
+  const rankBadges = [
+    { icon: "🥇", color: "bg-yellow-500 text-yellow-900" },
+    { icon: "🥈", color: "bg-gray-400 text-gray-900" },
+    { icon: "🥉", color: "bg-amber-600 text-amber-900" },
+  ];
 
-  // Ukuran dinamis
-  const defaultCardWidth = large ? "w-64 md:w-80" : "w-48 md:w-64";
-  const cardWidthClass = cardWidth ? cardWidth : defaultCardWidth;
-  const coverClass = large
-    ? "w-full h-auto min-h-[20rem] md:min-h-[28rem]"
-    : "w-full h-auto min-h-[16rem] md:min-h-[22rem]";
+  const rankBadge = rankBadges[rank - 1];
+
+  const cardContent = (
+    <div
+      className="relative group bg-white rounded-xl shadow-md hover:shadow-lg hover:scale-105 transition-all duration-200 w-44 p-4 flex flex-col items-center cursor-pointer"
+      onClick={onClick}
+      tabIndex={0}
+      role="button"
+      aria-label={`View details for ${book.title}`}
+    >
+      {/* Badge Ranking */}
+      {rank <= 3 && (
+        <div
+          className={`absolute -top-2 -right-2 z-10 w-8 h-8 rounded-full ${rankBadge.color} flex items-center justify-center text-xs font-bold shadow-lg`}
+        >
+          {rankBadge.icon}
+        </div>
+      )}
+
+      {/* Cover Buku */}
+      <div className="w-full aspect-[3/4] mb-3 relative overflow-hidden rounded-lg">
+        {book.coverImage ? (
+          <img
+            src={book.coverImage}
+            alt={`Cover of ${book.title}`}
+            className="w-full h-full object-cover"
+            loading="lazy"
+          />
+        ) : (
+          <div className="w-full h-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center">
+            <span className="text-gray-400 text-xs">No Cover</span>
+          </div>
+        )}
+      </div>
+
+      {/* Badge Jumlah Peminjaman */}
+      <div className="mb-3">
+        <span className="bg-orange-500 text-white px-4 py-2 rounded-full text-sm font-bold whitespace-nowrap shadow-md">
+          🔥 {book.borrowCount} borrowed
+        </span>
+      </div>
+
+      {/* Info Buku */}
+      <div className="text-center w-full">
+        <h3 className="font-semibold text-gray-900 text-sm leading-tight mb-1 line-clamp-2">
+          {book.title}
+        </h3>
+        <p className="text-xs text-gray-500 line-clamp-1">{book.author}</p>
+      </div>
+    </div>
+  );
+
+  // Jika ada onClick, return div biasa, jika tidak ada return Link
+  if (onClick) {
+    return cardContent;
+  }
 
   return (
     <Link
       href={`/books/${book.id}`}
-      className="inline-block focus:outline-none focus:ring-2 focus:ring-primary-500 rounded-xl"
+      className="focus:outline-none focus:ring-2 focus:ring-primary-500 rounded-xl"
     >
-      <div
-        className={`relative group bg-white rounded-xl shadow-md hover:shadow-lg hover:scale-105 transition ${cardWidthClass} p-3 flex flex-col items-center`}
-        tabIndex={0}
-        aria-label={`Lihat detail ${book.title}`}
-      >
-        {/* Badge Ranking */}
-        {rank <= 3 && (
-          <span
-            className={`absolute top-2 left-2 z-10 px-2 py-1 text-xs font-bold rounded-full ${rankBadge.color} text-white shadow`}
-          >
-            {rankBadge.icon}
-          </span>
-        )}
-        {/* Cover Buku */}
-        <div className="aspect-[2/3] w-full flex items-center justify-center mb-2 relative">
-          <img
-            src={book.coverImage}
-            alt={`Sampul buku ${book.title}`}
-            className={`object-contain rounded-lg shadow ${coverClass}`}
-            style={{ aspectRatio: "2/3" }}
-            loading="lazy"
-          />
-        </div>
-        {/* Badge Jumlah Peminjaman */}
-        <span className="mt-2 mb-1 bg-orange-500 text-white px-2 py-0.5 rounded-full text-xs shadow font-semibold whitespace-nowrap">
-          🔥 {book.borrowCount}borrowed
-        </span>
-        {/* Info Buku */}
-        <div className="mt-1 text-center w-full">
-          <div
-            className={`font-semibold truncate text-gray-900 ${
-              large ? "text-lg md:text-xl" : "text-base md:text-lg"
-            }`}
-          >
-            {book.title}
-          </div>
-          <div className="text-sm text-gray-500 truncate">{book.author}</div>
-        </div>
-      </div>
+      {cardContent}
     </Link>
   );
 }

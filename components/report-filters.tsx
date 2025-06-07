@@ -134,12 +134,6 @@ export function ReportFilters({ onFilterChange }: ReportFiltersProps) {
     <Card className="border shadow-sm">
       <CardHeader className="pb-3">
         <div className="flex flex-row items-center justify-between">
-          <div>
-            <CardTitle>Filter Laporan</CardTitle>
-            <CardDescription>
-              Filter data laporan berdasarkan kriteria
-            </CardDescription>
-          </div>
           <Filter className="h-4 w-4 text-muted-foreground" />
         </div>
       </CardHeader>

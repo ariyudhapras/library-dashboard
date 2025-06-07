@@ -1,25 +1,22 @@
-import { NextRequest, NextResponse } from 'next/server';
-import prisma from '@/lib/prisma';
-import { getServerSession } from 'next-auth';
-import { authOptions } from '@/app/api/auth/[...nextauth]/route';
+import { NextRequest, NextResponse } from "next/server";
+import prisma from "@/lib/prisma";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 
 export async function POST(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions);
-    
+
     if (!session) {
-      return NextResponse.json(
-        { error: 'Unauthorized' },
-        { status: 401 }
-      );
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
     const data = await request.json();
     const { id, actualReturnDate, status } = data;
-    
+
     if (!id || !actualReturnDate || !status) {
       return NextResponse.json(
-        { error: 'Loan ID, actual return date, and status are required' },
+        { error: "Loan ID, actual return date, and status are required" },
         { status: 400 }
       );
     }
@@ -27,20 +24,24 @@ export async function POST(request: NextRequest) {
     // Get the current loan
     const currentLoan = await prisma.bookLoan.findUnique({
       where: { id },
-      include: { book: true }
+      include: { book: true },
     });
 
     if (!currentLoan) {
-      return NextResponse.json(
-        { error: 'Loan not found' },
-        { status: 404 }
-      );
+      return NextResponse.json({ error: "Loan not found" }, { status: 404 });
     }
 
     // Check if the user is authorized to return this book
-    if (currentLoan.userId !== parseInt(session.user.id as string)) {
+    const sessionUserId = Number(session.user.id);
+    if (isNaN(sessionUserId)) {
       return NextResponse.json(
-        { error: 'You are not authorized to return this book' },
+        { error: "Invalid user ID in session" },
+        { status: 400 }
+      );
+    }
+    if (currentLoan.userId !== sessionUserId) {
+      return NextResponse.json(
+        { error: "You are not authorized to return this book" },
         { status: 403 }
       );
     }
@@ -50,7 +51,7 @@ export async function POST(request: NextRequest) {
       where: { id },
       data: {
         status,
-        actualReturnDate: new Date(actualReturnDate)
+        actualReturnDate: new Date(actualReturnDate),
       },
       include: {
         book: true,
@@ -58,10 +59,11 @@ export async function POST(request: NextRequest) {
           select: {
             id: true,
             name: true,
-            email: true
-          }
-        }
-      }
+            email: true,
+            profileImage: true, // ✅ FIXED: Added profileImage
+          },
+        },
+      },
     });
 
     // Increase the book stock
@@ -69,17 +71,17 @@ export async function POST(request: NextRequest) {
       where: { id: currentLoan.bookId },
       data: {
         stock: {
-          increment: 1
-        }
-      }
+          increment: 1,
+        },
+      },
     });
-    
+
     return NextResponse.json(updatedLoan);
   } catch (error) {
-    console.error('Error returning book:', error);
+    console.error("Error returning book:", error);
     return NextResponse.json(
-      { error: 'Failed to return book' },
+      { error: "Failed to return book" },
       { status: 500 }
     );
   }
-} 
+}

@@ -137,36 +137,36 @@ export function LibraryReportsTable({ type = "all", reportData }: LibraryReports
     switch (status) {
       case "PENDING":
         return (
-          <Badge variant="outline" className="bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300">
+          <Badge className="bg-yellow-500 text-white">
             Diajukan
           </Badge>
         )
       case "APPROVED":
         return (
-          <Badge variant="outline" className="bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300">
+          <Badge className="bg-green-600 text-white">
             Dipinjam
           </Badge>
         )
       case "REJECTED":
         return (
-          <Badge variant="outline" className="bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300">
+          <Badge className="bg-red-600 text-white">
             Ditolak
           </Badge>
         )
       case "RETURNED":
         return (
-          <Badge variant="outline" className="bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300">
+          <Badge className="border-blue-600 text-blue-600 bg-transparent">
             Dikembalikan
           </Badge>
         )
       case "LATE":
         return (
-          <Badge variant="outline" className="bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-300">
+          <Badge className="bg-orange-500 text-white">
             Terlambat
           </Badge>
         )
       default:
-        return <Badge variant="outline">Unknown</Badge>
+        return <Badge className="bg-gray-500 text-white">{status}</Badge>
     }
   }
   
@@ -195,7 +195,7 @@ export function LibraryReportsTable({ type = "all", reportData }: LibraryReports
               {popularBooks.map((book, index) => (
                 <div key={index} className="flex items-center justify-between rounded-lg border p-3">
                   <span>{book.title}</span>
-                  <Badge variant="secondary">{book.count} peminjaman</Badge>
+                  <Badge>{book.count} peminjaman</Badge>
                 </div>
               ))}
             </div>
@@ -211,7 +211,7 @@ export function LibraryReportsTable({ type = "all", reportData }: LibraryReports
               {activeMembers.map((member, index) => (
                 <div key={index} className="flex items-center justify-between rounded-lg border p-3">
                   <span>{member.name}</span>
-                  <Badge variant="secondary">{member.count} transaksi</Badge>
+                  <Badge>{member.count} transaksi</Badge>
                 </div>
               ))}
             </div>
