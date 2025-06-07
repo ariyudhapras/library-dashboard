@@ -98,11 +98,12 @@ body {
   body * {
     visibility: hidden;
   }
-  
-  .membership-card, .membership-card * {
+
+  .membership-card,
+  .membership-card * {
     visibility: visible;
   }
-  
+
   .membership-card {
     position: absolute;
     left: 0;
@@ -114,7 +115,7 @@ body {
     box-shadow: none;
     background: white;
   }
-  
+
   .print-hide {
     display: none !important;
   }
@@ -131,13 +132,16 @@ body {
 }
 
 /* Base styles */
-html, body {
+html,
+body {
   width: 100%;
   overflow-x: hidden;
   box-sizing: border-box;
 }
 
-*, *::before, *::after {
+*,
+*::before,
+*::after {
   box-sizing: inherit;
 }
 
