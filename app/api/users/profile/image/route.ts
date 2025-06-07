@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { writeFile, mkdir } from "fs/promises";
 import { join, dirname } from "path";
 import fs from "fs";
-import prisma from "@/lib/prisma";
+import { supabase } from "@/lib/supabase";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 
@@ -125,19 +125,57 @@ export async function POST(request: NextRequest) {
     // Update the user's profile image in the database
     try {
       console.log(`API: Updating profile image for user ${userId}`);
-      const updatedUser = await prisma.user.update({
-        where: { id: userId },
-        data: {
-          profileImage: relativePath,
-        },
-        select: {
-          id: true,
-          memberId: true,
-          name: true,
-          email: true,
-          profileImage: true,
-        },
-      });
+      const { data: updatedUser, error: updateError } = await supabase
+        .from('user')
+        .update({ profileImage: relativePath })
+        .eq('id', userId)
+        .select('id, memberId, name, email, profileImage')
+        .single();
+
+      if (updateError) {
+        console.error("API: Error updating user profile in database:", updateError);
+        // Remove file if database update fails
+        try {
+          fs.unlinkSync(absolutePath);
+          console.log(
+            `API: Removed uploaded file ${absolutePath} after database error`
+          );
+        } catch (unlinkError) {
+          console.error(
+            "API: Failed to remove uploaded file after database error:",
+            unlinkError
+          );
+        }
+        return NextResponse.json(
+          {
+            error: "Gagal memperbarui profil dalam database.",
+            details: updateError.message,
+          },
+          { status: 500 }
+        );
+      }
+
+      if (!updatedUser) {
+        console.error("API: User not found or not updated for ID:", userId);
+        // Attempt to remove file as the user record wasn't updated as expected
+        try {
+          fs.unlinkSync(absolutePath);
+          console.log(
+            `API: Removed uploaded file ${absolutePath} as user update returned no data`
+          );
+        } catch (unlinkError) {
+          console.error(
+            "API: Failed to remove uploaded file after empty update result:",
+            unlinkError
+          );
+        }
+        return NextResponse.json(
+          {
+            error: "Gagal memperbarui profil: Pengguna tidak ditemukan atau tidak ada data yang dikembalikan.",
+          },
+          { status: 404 } // Or 500 if it's unexpected
+        );
+      }
 
       console.log(`API: Profile image updated successfully for user ${userId}`);
       return NextResponse.json({
@@ -146,23 +184,24 @@ export async function POST(request: NextRequest) {
         user: updatedUser,
       });
     } catch (error) {
-      console.error("API: Error updating user profile in database:", error);
-      // Remove file if database update fails
+      // This catch block is for unexpected errors during the try block execution, 
+      // not specific to Supabase client errors if they were already handled by `if (updateError)`.
+      console.error("API: Unexpected error during database update process:", error);
+      // Attempt to remove file if any unexpected error occurs during this stage
       try {
         fs.unlinkSync(absolutePath);
         console.log(
-          `API: Removed uploaded file ${absolutePath} after database error`
+          `API: Removed uploaded file ${absolutePath} after unexpected database stage error`
         );
       } catch (unlinkError) {
         console.error(
-          "API: Failed to remove uploaded file after database error:",
+          "API: Failed to remove uploaded file after unexpected database stage error:",
           unlinkError
         );
       }
-
       return NextResponse.json(
         {
-          error: "Gagal memperbarui profil dalam database.",
+          error: "Terjadi kesalahan tak terduga saat memperbarui profil.",
           details: error instanceof Error ? error.message : "Unknown error",
         },
         { status: 500 }

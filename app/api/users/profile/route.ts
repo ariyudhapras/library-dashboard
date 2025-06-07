@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import prisma from '@/lib/prisma';
+import { supabase } from '@/lib/supabase';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/app/api/auth/[...nextauth]/route';
 
@@ -23,27 +23,46 @@ export async function GET(request: NextRequest) {
     }
     
     // Fetch the user's profile
-    console.log(`API: Fetching user profile for ID: ${session.user.id}`);
-    const user = await prisma.user.findUnique({
-      where: { id: parseInt(session.user.id) },
-      select: {
-        id: true,
-        memberId: true,
-        name: true,
-        email: true,
-        address: true,
-        phone: true,
-        birthDate: true,
-        profileImage: true,
-        role: true,
-        status: true,
-        createdAt: true,
-        updatedAt: true,
-      },
-    });
+    const userId = parseInt(String(session.user.id));
+    if (isNaN(userId)) {
+      console.log(`API: Invalid user ID from session: ${session.user.id}`);
+      return NextResponse.json({ error: 'Invalid user ID' }, { status: 400 });
+    }
+
+    console.log(`API: Fetching user profile for ID: ${userId}`);
+    const { data: user, error: fetchError } = await supabase
+      .from('user')
+      .select(`
+        id,
+        memberId,
+        name,
+        email,
+        address,
+        phone,
+        birthDate,
+        profileImage,
+        role,
+        status,
+        createdAt,
+        updatedAt
+      `)
+      .eq('id', userId)
+      .single();
+
+    if (fetchError) {
+      console.error(`API: Error fetching user profile for ID ${userId}:`, fetchError);
+      // PGRST116: Row to be returned was not found
+      if (fetchError.code === 'PGRST116') {
+        return NextResponse.json({ error: 'User not found' }, { status: 404 });
+      }
+      return NextResponse.json(
+        { error: 'Failed to fetch user profile', details: fetchError.message },
+        { status: 500 }
+      );
+    }
     
-    if (!user) {
-      console.log(`API: User with ID ${session.user.id} not found in database`);
+    if (!user) { // Should be caught by fetchError.code === 'PGRST116', but as a safeguard
+      console.log(`API: User with ID ${userId} not found in database (post-query check)`);
       return NextResponse.json(
         { error: 'User not found' },
         { status: 404 }
@@ -80,7 +99,11 @@ export async function PUT(request: NextRequest) {
       );
     }
     
-    const userId = parseInt(session.user.id);
+    const userId = parseInt(String(session.user.id));
+    if (isNaN(userId)) {
+      console.log(`API: Invalid user ID from session: ${session.user.id}`);
+      return NextResponse.json({ error: 'Invalid user ID' }, { status: 400 });
+    }
     
     // Parse request body
     let data;
@@ -157,17 +180,22 @@ export async function PUT(request: NextRequest) {
     }
     
     // Validate current user before updating
-    const user = await prisma.user.findUnique({
-      where: { id: userId },
-      select: { 
-        id: true,
-        profileImage: true,
-        email: true
-      }
-    });
+    const { data: user, error: userCheckError } = await supabase
+      .from('user')
+      .select('id, profileImage, email')
+      .eq('id', userId)
+      .maybeSingle(); // Use maybeSingle as user might not exist
+
+    if (userCheckError) {
+      console.error(`API: Error checking user existence for ID ${userId}:`, userCheckError);
+      return NextResponse.json(
+        { error: 'Database error while checking user', details: userCheckError.message },
+        { status: 500 }
+      );
+    }
     
     if (!user) {
-      console.log(`API: User with ID ${userId} not found in database`);
+      console.log(`API: User with ID ${userId} not found in database for update`);
       return NextResponse.json(
         { error: "User tidak ditemukan" },
         { status: 404 }
@@ -176,34 +204,58 @@ export async function PUT(request: NextRequest) {
     
     // Update the user
     try {
-      console.log(`API: Updating user ${userId} with data:`, { name, address, phone, birthDate });
-      const updatedUser = await prisma.user.update({
-        where: { id: userId },
-        data: {
+      const updatePayload: { name: string; address: string; phone: string; birthDate?: string | null } = {
+        name,
+        address,
+        phone,
+      };
+      if (birthDate) {
+        updatePayload.birthDate = new Date(birthDate).toISOString();
+      } else {
+        updatePayload.birthDate = null;
+      }
+
+      console.log(`API: Updating user ${userId} with data:`, updatePayload);
+      const { data: updatedUser, error: updateError } = await supabase
+        .from('user')
+        .update(updatePayload)
+        .eq('id', userId)
+        .select(`
+          id,
+          memberId,
           name,
+          email,
           address,
           phone,
-          birthDate: birthDate ? new Date(birthDate) : null,
-        },
-        select: {
-          id: true,
-          memberId: true,
-          name: true,
-          email: true,
-          address: true,
-          phone: true,
-          birthDate: true,
-          profileImage: true,
-          role: true,
-          status: true,
-          createdAt: true,
-          updatedAt: true,
-        },
-      });
+          birthDate,
+          profileImage,
+          role,
+          status,
+          createdAt,
+          updatedAt
+        `)
+        .single();
+
+      if (updateError) {
+        console.error(`API: Error updating user ${userId} in database:`, updateError);
+        return NextResponse.json(
+          { error: 'Database error saat memperbarui profil', details: updateError.message },
+          { status: 500 }
+        );
+      }
+
+      if (!updatedUser) {
+        // This case should ideally not be reached if the user check above passed and .single() is used.
+        // However, it's a safeguard.
+        console.error(`API: User ${userId} not found after update attempt or update returned no data.`);
+        return NextResponse.json(
+          { error: 'Gagal memperbarui profil: Pengguna tidak ditemukan setelah pembaruan.' },
+          { status: 404 }
+        );
+      }
       
       console.log(`API: User ${userId} updated successfully`);
       
-      // Store target redirect in the response
       const responseData = {
         ...updatedUser,
         redirectUrl: redirectTo || '/user/profile',
@@ -212,9 +264,10 @@ export async function PUT(request: NextRequest) {
       
       return NextResponse.json(responseData);
     } catch (error) {
-      console.error('Error updating user in database:', error);
+      // Catch unexpected errors during the update process itself, not Supabase client errors if handled by updateError.
+      console.error('Unexpected error updating user in database:', error);
       return NextResponse.json(
-        { error: 'Database error saat memperbarui profil', details: error instanceof Error ? error.message : 'Unknown error' },
+        { error: 'Terjadi kesalahan tak terduga saat memperbarui profil', details: error instanceof Error ? error.message : 'Unknown error' },
         { status: 500 }
       );
     }

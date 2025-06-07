@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server"
 import { hash } from "bcryptjs"
-import prisma from "@/lib/prisma"
-import { PrismaClientKnownRequestError } from "@prisma/client/runtime/library"
+import { supabase } from "@/lib/supabase"
 import { generateMemberId } from "@/lib/utils"
 
 export async function POST(req: Request) {
@@ -114,9 +113,19 @@ export async function POST(req: Request) {
     try {
       // Check if user already exists
       console.log("Checking if user already exists...")
-      const existingUser = await prisma.user.findUnique({
-        where: { email },
-      })
+      const { data: existingUser, error: fetchError } = await supabase
+        .from("user")
+        .select("id")
+        .eq("email", email)
+        .maybeSingle()
+
+      if (fetchError && fetchError.code !== 'PGRST116') { // PGRST116: Row not found, which is fine here
+        console.error("Database error during user check:", fetchError)
+        return NextResponse.json(
+          { error: `Database error during user check: ${fetchError.message}` },
+          { status: 500 }
+        )
+      }
 
       if (existingUser) {
         return NextResponse.json(
@@ -125,12 +134,7 @@ export async function POST(req: Request) {
         )
       }
     } catch (error) {
-      console.error("Database error during user check:", error)
-      const errorMessage = error instanceof Error ? error.message : "Unknown database error"
-      return NextResponse.json(
-        { error: `Database error during user check: ${errorMessage}` },
-        { status: 500 }
-      )
+      // This block is now handled by the Supabase error check above for `fetchError`
     }
 
     // Hash password
@@ -151,7 +155,7 @@ export async function POST(req: Request) {
     let memberId
     try {
       console.log("Generating unique member ID...")
-      memberId = await generateMemberId(prisma)
+      memberId = await generateMemberId()
       console.log("Generated member ID:", memberId)
     } catch (error) {
       console.error("Error generating member ID:", error)
@@ -165,8 +169,9 @@ export async function POST(req: Request) {
     // Create user
     try {
       console.log("Creating new user with role:", role)
-      const user = await prisma.user.create({
-        data: {
+      const { data: user, error: createError } = await supabase
+        .from("user")
+        .insert({
           memberId,
           name,
           email,
@@ -174,9 +179,41 @@ export async function POST(req: Request) {
           role,
           address,
           phone,
-          birthDate: birthDate ? new Date(birthDate) : null,
-        },
-      })
+          birthDate: birthDate ? new Date(birthDate).toISOString() : null, // Ensure ISO string for Supabase
+        })
+        .select("id, memberId, name, email, role, address, phone, birthDate, createdAt")
+        .single()
+
+      if (createError) {
+        console.error("User creation error:", createError)
+        // Handle Supabase specific errors (e.g., unique constraint violation)
+        if (createError.code === '23505') { // PostgreSQL unique violation
+          // Attempt to determine which field caused the violation from the message if possible
+          // Supabase error messages for unique violations usually include the constraint name
+          // e.g., "duplicate key value violates unique constraint \"user_email_key\""
+          let fieldMessage = "A field";
+          if (createError.message.includes("_email_key")) {
+            fieldMessage = "Email";
+          } else if (createError.message.includes("_memberId_key")) {
+            fieldMessage = "Member ID"; // Assuming you have a unique constraint on memberId
+          }
+          return NextResponse.json(
+            { error: `${fieldMessage} is already taken.` },
+            { status: 400 }
+          )
+        }
+        return NextResponse.json(
+          { error: `Error creating user: ${createError.message}` },
+          { status: 500 }
+        )
+      }
+      if (!user) { // Should not happen if no error, but good practice
+        console.error("User was not created, but no error reported.");
+        return NextResponse.json(
+          { error: "User was not created, but no error reported." },
+          { status: 500 }
+        );
+      }
 
       console.log("User created successfully:", user.id, "with role:", user.role, "and member ID:", user.memberId)
       return NextResponse.json(
@@ -198,26 +235,7 @@ export async function POST(req: Request) {
     } catch (error) {
       console.error("User creation error:", error)
       
-      // Handle Prisma specific errors
-      if (error instanceof PrismaClientKnownRequestError) {
-        // P2002 is a unique constraint violation
-        if (error.code === 'P2002') {
-          const field = error.meta?.target as string[] || ['unknown field']
-          return NextResponse.json(
-            { error: `The ${field.join(', ')} is already taken` },
-            { status: 400 }
-          )
-        }
-        
-        // P2003 is a foreign key constraint violation
-        if (error.code === 'P2003') {
-          return NextResponse.json(
-            { error: `Referenced relation does not exist: ${error.meta?.field_name}` },
-            { status: 400 }
-          )
-        }
-      }
-      
+      // Supabase error handling is done within the 'if (createError)' block above
       const errorMessage = error instanceof Error ? error.message : "Unknown error during user creation"
       return NextResponse.json(
         { error: `Error creating user: ${errorMessage}` },

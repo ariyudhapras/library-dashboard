@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server"
 import { hash } from "bcryptjs"
-import prisma from "@/lib/prisma"
+import { supabase } from "@/lib/supabase"
 import { generateMemberId } from "@/lib/utils"
 
 // This endpoint should ONLY be used in development!
@@ -21,39 +21,70 @@ export async function GET(req: Request) {
     const adminHashedPassword = await hash(adminPassword, 10)
     
     // Generate a unique member ID for admin
-    const adminMemberId = await generateMemberId(prisma)
+    const adminMemberId = await generateMemberId()
 
     // Check if user already exists
-    const existingAdmin = await prisma.user.findUnique({
-      where: { email: adminEmail },
-    })
+    const { data: existingAdmin, error: adminExistsError } = await supabase
+      .from("user")
+      .select("id, memberId")
+      .eq("email", adminEmail)
+      .maybeSingle()
+
+    if (adminExistsError) {
+      console.error("Error checking for existing admin:", adminExistsError)
+      return NextResponse.json(
+        { error: "Error checking for existing admin: " + adminExistsError.message },
+        { status: 500 }
+      )
+    }
 
     let adminUser
     if (existingAdmin) {
       // Update existing admin user
-      adminUser = await prisma.user.update({
-        where: { email: adminEmail },
-        data: {
+      const { data: updatedAdmin, error: updateAdminError } = await supabase
+        .from("user")
+        .update({
           name: "Admin Test",
           password: adminHashedPassword,
           role: "admin",
-          // Keep the existing memberId if it exists
           memberId: existingAdmin.memberId || adminMemberId,
-        },
-      })
-      console.log("Updated existing admin user:", adminUser.id, "with member ID:", adminUser.memberId)
+        })
+        .eq("email", adminEmail)
+        .select("id, email, memberId")
+        .single()
+
+      if (updateAdminError) {
+        console.error("Error updating admin user:", updateAdminError)
+        return NextResponse.json(
+          { error: "Error updating admin user: " + updateAdminError.message },
+          { status: 500 }
+        )
+      }
+      adminUser = updatedAdmin
+      console.log("Updated existing admin user:", adminUser?.id, "with member ID:", adminUser?.memberId)
     } else {
       // Create new admin user
-      adminUser = await prisma.user.create({
-        data: {
+      const { data: newAdmin, error: createAdminError } = await supabase
+        .from("user")
+        .insert({
           name: "Admin Test",
           email: adminEmail,
           password: adminHashedPassword,
           role: "admin",
           memberId: adminMemberId,
-        },
-      })
-      console.log("Created new admin user:", adminUser.id, "with member ID:", adminUser.memberId)
+        })
+        .select("id, email, memberId")
+        .single()
+
+      if (createAdminError) {
+        console.error("Error creating admin user:", createAdminError)
+        return NextResponse.json(
+          { error: "Error creating admin user: " + createAdminError.message },
+          { status: 500 }
+        )
+      }
+      adminUser = newAdmin
+      console.log("Created new admin user:", adminUser?.id, "with member ID:", adminUser?.memberId)
     }
 
     // Create test regular user
@@ -62,43 +93,84 @@ export async function GET(req: Request) {
     const userHashedPassword = await hash(userPassword, 10)
     
     // Generate a unique member ID for user
-    const userMemberId = await generateMemberId(prisma)
+    const userMemberId = await generateMemberId()
 
     // Check if user already exists
-    const existingUser = await prisma.user.findUnique({
-      where: { email: userEmail },
-    })
+    const { data: existingUser, error: userExistsError } = await supabase
+      .from("user")
+      .select("id, memberId")
+      .eq("email", userEmail)
+      .maybeSingle()
+
+    if (userExistsError) {
+      console.error("Error checking for existing user:", userExistsError)
+      return NextResponse.json(
+        { error: "Error checking for existing user: " + userExistsError.message },
+        { status: 500 }
+      )
+    }
 
     let regularUser
     if (existingUser) {
       // Update existing regular user
-      regularUser = await prisma.user.update({
-        where: { email: userEmail },
-        data: {
+      const { data: updatedUser, error: updateUserError } = await supabase
+        .from("user")
+        .update({
           name: "User Test",
           password: userHashedPassword,
           role: "user",
-          // Keep the existing memberId if it exists
           memberId: existingUser.memberId || userMemberId,
-        },
-      })
-      console.log("Updated existing regular user:", regularUser.id, "with member ID:", regularUser.memberId)
+        })
+        .eq("email", userEmail)
+        .select("id, email, memberId")
+        .single()
+
+      if (updateUserError) {
+        console.error("Error updating regular user:", updateUserError)
+        return NextResponse.json(
+          { error: "Error updating regular user: " + updateUserError.message },
+          { status: 500 }
+        )
+      }
+      regularUser = updatedUser
+      console.log("Updated existing regular user:", regularUser?.id, "with member ID:", regularUser?.memberId)
     } else {
       // Create new regular user
-      regularUser = await prisma.user.create({
-        data: {
+      const { data: newUser, error: createUserError } = await supabase
+        .from("user")
+        .insert({
           name: "User Test",
           email: userEmail,
           password: userHashedPassword,
           role: "user",
           memberId: userMemberId,
-        },
-      })
-      console.log("Created new regular user:", regularUser.id, "with member ID:", regularUser.memberId)
+        })
+        .select("id, email, memberId")
+        .single()
+
+      if (createUserError) {
+        console.error("Error creating regular user:", createUserError)
+        return NextResponse.json(
+          { error: "Error creating regular user: " + createUserError.message },
+          { status: 500 }
+        )
+      }
+      regularUser = newUser
+      console.log("Created new regular user:", regularUser?.id, "with member ID:", regularUser?.memberId)
     }
 
     // Seed books if there are none
-    const existingBooks = await prisma.book.count();
+    const { count: existingBooks, error: countBooksError } = await supabase
+      .from("book")
+      .select("*", { count: "exact", head: true })
+
+    if (countBooksError) {
+      console.error("Error counting books:", countBooksError)
+      return NextResponse.json(
+        { error: "Error counting books: " + countBooksError.message },
+        { status: 500 }
+      )
+    }
     const createdBooks = [];
 
     if (existingBooks === 0) {
@@ -139,9 +211,27 @@ export async function GET(req: Request) {
       ];
 
       for (const book of books) {
-        const createdBook = await prisma.book.create({
-          data: book,
-        });
+        const { data: createdBook, error: createBookError } = await supabase
+          .from("book")
+          .insert(book)
+          .select()
+          .single()
+
+        if (createBookError) {
+          console.error(`Error creating book "${book.title}":`, createBookError)
+          // Optionally, decide if you want to stop all seeding or continue
+          return NextResponse.json(
+            { error: `Error creating book "${book.title}": ` + createBookError.message },
+            { status: 500 }
+          )
+        }
+        if (!createdBook) { // Should not happen if no error, but good practice
+            console.error(`Book "${book.title}" was not created, but no error reported.`);
+            return NextResponse.json(
+              { error: `Book "${book.title}" was not created, but no error reported.` },
+              { status: 500 }
+            );
+        }
         createdBooks.push(createdBook);
       }
 
@@ -151,14 +241,14 @@ export async function GET(req: Request) {
     return NextResponse.json({
       message: "Seed completed successfully",
       admin: {
-        id: adminUser.id,
-        email: adminUser.email,
-        memberId: adminUser.memberId,
+        id: adminUser?.id,
+        email: adminUser?.email,
+        memberId: adminUser?.memberId,
       },
       user: {
-        id: regularUser.id,
-        email: regularUser.email,
-        memberId: regularUser.memberId,
+        id: regularUser?.id,
+        email: regularUser?.email,
+        memberId: regularUser?.memberId,
       },
       books: existingBooks === 0 ? createdBooks.length : "No new books created",
     });

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import prisma from "@/lib/prisma";
+import { supabase } from "@/lib/supabase";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 
@@ -43,42 +43,38 @@ export async function GET(request: NextRequest) {
       };
     }
 
-    const bookLoans = await prisma.bookLoan.findMany({
-      where: whereClause,
-      select: {
-        id: true,
-        borrowDate: true,
-        returnDate: true,
-        status: true,
-        actualReturnDate: true,
-        book: {
-          select: {
-            id: true,
-            title: true,
-            author: true,
-            coverImage: true,
-            stock: true,
-          },
-        },
-        user: {
-          select: {
-            id: true,
-            name: true,
-            email: true,
-            profileImage: true, // ✅ FIXED: Added profileImage
-          },
-        },
-      },
-      orderBy: {
-        createdAt: "desc",
-      },
-    });
+    let query = supabase
+      .from('bookLoan')
+      .select(`
+        id,
+        borrowDate,
+        returnDate,
+        status,
+        actualReturnDate,
+        book:bookId (id, title, author, coverImage, stock),
+        user:userId (id, name, email, profileImage)
+      `)
+      .order('createdAt', { ascending: false });
+
+    if (userId) {
+      query = query.eq('userId', parseInt(userId));
+    }
+
+    const { data: bookLoans, error: fetchError } = await query;
+
+    if (fetchError) {
+      console.error("Error fetching book loans:", fetchError);
+      return NextResponse.json(
+        { error: "Failed to fetch book loans: " + fetchError.message },
+        { status: 500 }
+      );
+    }
 
     return NextResponse.json(bookLoans);
-  } catch (error) {
+  } catch (error: any) {
     console.error("Error fetching book loans:", error);
     return NextResponse.json(
-      { error: "Failed to fetch book loans" },
+      { error: error.message || "Failed to fetch book loans" },
       { status: 500 }
     );
   }
@@ -104,16 +100,27 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const userId = session.user.id; // Assuming session.user.id is already a number as implied by the TS error
+    const userId = Number(session.user.id);
+    if (isNaN(userId)) {
+      return NextResponse.json({ error: 'Invalid user ID in session' }, { status: 400 });
+    }
 
     // Check if user already has an active loan for this book
-    const existingLoan = await prisma.bookLoan.findFirst({
-      where: {
-        userId: userId,
-        bookId: bookId,
-        status: { in: ["PENDING", "APPROVED"] },
-      },
-    });
+    const { data: existingLoan, error: existingLoanError } = await supabase
+      .from('bookLoan')
+      .select('id')
+      .eq('userId', userId)
+      .eq('bookId', bookId)
+      .in('status', [LoanStatus.PENDING, LoanStatus.APPROVED])
+      .maybeSingle();
+
+    if (existingLoanError) {
+      console.error("Error checking existing loan:", existingLoanError);
+      return NextResponse.json(
+        { error: "Failed to check existing loans: " + existingLoanError.message },
+        { status: 500 }
+      );
+    }
 
     if (existingLoan) {
       return NextResponse.json(
@@ -123,11 +130,22 @@ export async function POST(request: NextRequest) {
     }
 
     // Validate the book exists and has stock
-    const book = await prisma.book.findUnique({
-      where: {
-        id: bookId,
-      },
-    });
+    const { data: book, error: bookError } = await supabase
+      .from('book')
+      .select('id, stock')
+      .eq('id', bookId)
+      .single();
+
+    if (bookError) {
+      console.error("Error fetching book details:", bookError);
+      if (bookError.code === 'PGRST116') { // Not found
+        return NextResponse.json({ error: "Book not found" }, { status: 404 });
+      }
+      return NextResponse.json(
+        { error: "Failed to fetch book details: " + bookError.message },
+        { status: 500 }
+      );
+    }
 
     if (!book) {
       return NextResponse.json({ error: "Book not found" }, { status: 404 });
@@ -141,40 +159,43 @@ export async function POST(request: NextRequest) {
     }
 
     // Create the book loan
-    const newLoan = await prisma.bookLoan.create({
-      data: {
-        userId: userId,
+    const { data: newLoan, error: createLoanError } = await supabase
+      .from('bookLoan')
+      .insert({
+        userId: userId, // Ensure userId is a number
         bookId,
-        borrowDate: new Date(borrowDate),
-        returnDate: new Date(returnDate),
+        borrowDate: new Date(borrowDate).toISOString(),
+        returnDate: new Date(returnDate).toISOString(),
         notes,
         status: LoanStatus.PENDING,
-      },
-      include: {
-        book: {
-          select: {
-            id: true,
-            title: true,
-            author: true,
-            coverImage: true,
-          },
-        },
-        user: {
-          select: {
-            id: true,
-            name: true,
-            email: true,
-            profileImage: true, // ✅ FIXED: Added profileImage
-          },
-        },
-      },
-    });
+      })
+      .select(`
+        id,
+        borrowDate,
+        returnDate,
+        status,
+        notes,
+        book:bookId (id, title, author, coverImage),
+        user:userId (id, name, email, profileImage)
+      `)
+      .single();
+
+    if (createLoanError) {
+      console.error("Error creating book loan:", createLoanError);
+      return NextResponse.json(
+        { error: "Failed to create book loan: " + createLoanError.message },
+        { status: 500 }
+      );
+    }
+    if (!newLoan) {
+        return NextResponse.json({ error: 'Failed to retrieve created loan data.' }, { status: 500 });
+    }
 
     return NextResponse.json(newLoan, { status: 201 });
-  } catch (error) {
+  } catch (error: any) {
     console.error("Error creating book loan:", error);
     return NextResponse.json(
-      { error: "Failed to create book loan" },
+      { error: error.message || "Failed to create book loan" },
       { status: 500 }
     );
   }
@@ -208,10 +229,22 @@ export async function PATCH(request: NextRequest) {
     }
 
     // Get the current loan to calculate stock change
-    const currentLoan = await prisma.bookLoan.findUnique({
-      where: { id },
-      include: { book: true },
-    });
+    const { data: currentLoan, error: fetchCurrentLoanError } = await supabase
+      .from('bookLoan')
+      .select('id, status, bookId, book:bookId (id, stock)')
+      .eq('id', id)
+      .single();
+
+    if (fetchCurrentLoanError) {
+      console.error("Error fetching current loan:", fetchCurrentLoanError);
+      if (fetchCurrentLoanError.code === 'PGRST116') { // Not found
+         return NextResponse.json({ error: "Loan not found" }, { status: 404 });
+      }
+      return NextResponse.json(
+        { error: "Failed to fetch loan details: " + fetchCurrentLoanError.message },
+        { status: 500 }
+      );
+    }
 
     if (!currentLoan) {
       return NextResponse.json({ error: "Loan not found" }, { status: 404 });
@@ -226,21 +259,29 @@ export async function PATCH(request: NextRequest) {
       updateData.actualReturnDate = new Date(actualReturnDate);
     }
 
-    const updatedLoan = await prisma.bookLoan.update({
-      where: { id },
-      data: updateData,
-      include: {
-        book: true,
-        user: {
-          select: {
-            id: true,
-            name: true,
-            email: true,
-            profileImage: true, // ✅ FIXED: Added profileImage
-          },
-        },
-      },
-    });
+    const { data: updatedLoan, error: updateLoanError } = await supabase
+      .from('bookLoan')
+      .update(updateData)
+      .eq('id', id)
+      .select(`
+        id,
+        status,
+        actualReturnDate,
+        book:bookId (*),
+        user:userId (id, name, email, profileImage)
+      `)
+      .single();
+
+    if (updateLoanError) {
+      console.error("Error updating book loan:", updateLoanError);
+      return NextResponse.json(
+        { error: "Failed to update book loan: " + updateLoanError.message },
+        { status: 500 }
+      );
+    }
+    if (!updatedLoan) {
+        return NextResponse.json({ error: 'Failed to retrieve updated loan data after update.' }, { status: 500 });
+    }
 
     // Update book stock based on status change
     let stockChange = 0;
@@ -262,21 +303,41 @@ export async function PATCH(request: NextRequest) {
 
     // Update book stock if needed
     if (stockChange !== 0) {
-      await prisma.book.update({
-        where: { id: currentLoan.bookId },
-        data: {
-          stock: {
-            increment: stockChange,
-          },
-        },
-      });
+      if (currentLoan && currentLoan.book && Array.isArray(currentLoan.book) && currentLoan.book.length > 0) {
+        const bookData = currentLoan.book[0]; // Access the first element of the array
+        const currentStock = bookData.stock;
+        const newStock = (currentStock !== null ? currentStock : 0) + stockChange;
+
+        const { error: stockUpdateError } = await supabase
+          .from('book')
+          .update({ stock: newStock })
+          .eq('id', currentLoan.bookId); // currentLoan.bookId refers to the book's ID stored in the loan table
+
+        if (stockUpdateError) {
+          console.error("Error updating book stock:", stockUpdateError);
+          return NextResponse.json(
+            { 
+              warning: "Loan status updated, but failed to update book stock. Please check manually.", 
+              error: stockUpdateError.message,
+              updatedLoan 
+            },
+            { status: 207 } 
+          );
+        }
+      } else {
+        // If stockChange is needed but book data is not as expected, log a warning.
+        // The loan status itself (updatedLoan) is already updated by this point.
+        console.warn(
+          `Book stock not updated for loan ID ${currentLoan?.id} due to missing/malformed related book data, despite stockChange=${stockChange}. Related book data: ${JSON.stringify(currentLoan?.book)}`
+        );
+      }
     }
 
     return NextResponse.json(updatedLoan);
-  } catch (error) {
+  } catch (error: any) {
     console.error("Error updating book loan:", error);
     return NextResponse.json(
-      { error: "Failed to update book loan" },
+      { error: error.message || "Failed to update book loan" },
       { status: 500 }
     );
   }

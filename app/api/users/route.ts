@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import prisma from '@/lib/prisma';
+import { supabase } from '@/lib/supabase';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/app/api/auth/[...nextauth]/route';
 
@@ -27,33 +27,38 @@ export async function GET(request: NextRequest) {
     const searchQuery = request.nextUrl.searchParams.get('search') || '';
     
     // Fetch all users with optional search filter
-    const users = await prisma.user.findMany({
-      where: {
-        OR: [
-          { name: { contains: searchQuery, mode: 'insensitive' } },
-          { email: { contains: searchQuery, mode: 'insensitive' } },
-          { memberId: { contains: searchQuery, mode: 'insensitive' } },
-        ],
-      },
-      orderBy: {
-        createdAt: 'desc',
-      },
-      select: {
-        id: true,
-        memberId: true,
-        name: true,
-        email: true,
-        address: true,
-        phone: true,
-        birthDate: true,
-        profileImage: true,
-        role: true,
-        status: true,
-        createdAt: true,
-        updatedAt: true,
-        // Exclude password for security
-      },
-    });
+    let query = supabase
+      .from('user')
+      .select(`
+        id,
+        memberId,
+        name,
+        email,
+        address,
+        phone,
+        birthDate,
+        profileImage,
+        role,
+        status,
+        createdAt,
+        updatedAt
+      `)
+      .order('createdAt', { ascending: false });
+
+    if (searchQuery) {
+      const searchPattern = `%${searchQuery}%`;
+      query = query.or(`name.ilike.${searchPattern},email.ilike.${searchPattern},memberId.ilike.${searchPattern}`);
+    }
+
+    const { data: users, error: fetchError } = await query;
+
+    if (fetchError) {
+      console.error('Error fetching users:', fetchError);
+      return NextResponse.json(
+        { error: 'Failed to fetch users', details: fetchError.message },
+        { status: 500 }
+      );
+    }
     
     return NextResponse.json(users);
   } catch (error) {
@@ -117,17 +122,28 @@ export async function PUT(request: NextRequest) {
     }
     
     // Check if trying to update own role
-    const currentSessionUserId = parseInt(session.user.id);
-    const updateUserId = parseInt(id);
+    const currentSessionUserId = parseInt(String(session.user.id));
+    const updateUserId = parseInt(String(id));
+    if (isNaN(currentSessionUserId) || isNaN(updateUserId)) {
+      return NextResponse.json({ error: 'Invalid User ID format for comparison' }, { status: 400 });
+    }
     
     // If updating current user from admin to regular user, check if they're the last admin
     if (currentSessionUserId === updateUserId && role !== 'admin') {
-      // Count how many admins there are
-      const adminCount = await prisma.user.count({
-        where: { role: 'admin' }
-      });
+      const { count: adminCount, error: countError } = await supabase
+        .from('user')
+        .select('id', { count: 'exact', head: true })
+        .eq('role', 'admin');
+
+      if (countError) {
+        console.error('Error counting admin users:', countError);
+        return NextResponse.json(
+          { error: 'Failed to verify admin count', details: countError.message },
+          { status: 500 }
+        );
+      }
       
-      if (adminCount <= 1) {
+      if (adminCount !== null && adminCount <= 1) {
         return NextResponse.json(
           { error: 'Cannot remove admin role from the last admin user' },
           { status: 400 }
@@ -136,28 +152,36 @@ export async function PUT(request: NextRequest) {
     }
     
     // Update the user
-    const updatedUser = await prisma.user.update({
-      where: { id: updateUserId },
-      data: {
+    const { data: updatedUser, error: updateError } = await supabase
+      .from('user')
+      .update({ name, role, status })
+      .eq('id', updateUserId)
+      .select(`
+        id,
+        memberId,
         name,
+        email,
+        address,
+        phone,
+        birthDate,
+        profileImage,
         role,
         status,
-      },
-      select: {
-        id: true,
-        memberId: true,
-        name: true,
-        email: true,
-        address: true,
-        phone: true,
-        birthDate: true,
-        profileImage: true,
-        role: true,
-        status: true,
-        createdAt: true,
-        updatedAt: true,
-      },
-    });
+        createdAt,
+        updatedAt
+      `)
+      .single();
+
+    if (updateError) {
+      console.error('Error updating user:', updateError);
+      return NextResponse.json(
+        { error: 'Failed to update user', details: updateError.message },
+        { status: 500 }
+      );
+    }
+    if (!updatedUser) {
+      return NextResponse.json({ error: 'User not found or update failed' }, { status: 404 });
+    }
     
     return NextResponse.json(updatedUser);
   } catch (error) {
@@ -199,10 +223,16 @@ export async function DELETE(request: NextRequest) {
       );
     }
     
-    const userId = parseInt(id);
+    const userId = parseInt(String(id));
+    if (isNaN(userId)) {
+      return NextResponse.json({ error: 'Invalid User ID format' }, { status: 400 });
+    }
     
     // Check if trying to delete yourself
-    const currentSessionUserId = parseInt(session.user.id);
+    const currentSessionUserId = parseInt(String(session.user.id));
+     if (isNaN(currentSessionUserId)) {
+      return NextResponse.json({ error: 'Invalid session User ID format' }, { status: 400 });
+    }
     if (currentSessionUserId === userId) {
       return NextResponse.json(
         { error: 'Cannot delete your own account' },
@@ -211,9 +241,19 @@ export async function DELETE(request: NextRequest) {
     }
     
     // Check if user exists
-    const user = await prisma.user.findUnique({
-      where: { id: userId },
-    });
+    const { data: user, error: findUserError } = await supabase
+      .from('user')
+      .select('id')
+      .eq('id', userId)
+      .maybeSingle();
+
+    if (findUserError) {
+      console.error('Error checking user existence for delete:', findUserError);
+      return NextResponse.json(
+        { error: 'Failed to check user existence', details: findUserError.message },
+        { status: 500 }
+      );
+    }
     
     if (!user) {
       return NextResponse.json(
@@ -222,15 +262,33 @@ export async function DELETE(request: NextRequest) {
       );
     }
     
-    // Delete all user's book loans first (cascade would be better in schema)
-    await prisma.bookLoan.deleteMany({
-      where: { userId },
-    });
+    // Delete all user's book loans first
+    const { error: loanDeleteError } = await supabase
+      .from('bookLoan')
+      .delete()
+      .eq('userId', userId);
+
+    if (loanDeleteError) {
+      console.error('Error deleting user book loans:', loanDeleteError);
+      return NextResponse.json(
+        { error: 'Failed to delete user book loans', details: loanDeleteError.message },
+        { status: 500 }
+      );
+    }
     
     // Delete the user
-    await prisma.user.delete({
-      where: { id: userId },
-    });
+    const { error: userDeleteError } = await supabase
+      .from('user')
+      .delete()
+      .eq('id', userId);
+
+    if (userDeleteError) {
+      console.error('Error deleting user:', userDeleteError);
+      return NextResponse.json(
+        { error: 'Failed to delete user', details: userDeleteError.message },
+        { status: 500 }
+      );
+    }
     
     return NextResponse.json({ success: true });
   } catch (error) {
