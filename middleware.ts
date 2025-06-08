@@ -5,8 +5,11 @@ import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { getToken } from "next-auth/jwt";
 
-// Public routes that don't require authentication
-const publicRoutes = ["/login", "/register"]; // Removed /api/auth, will handle pathname.startsWith('/api/auth') directly
+// Public page routes that don't require authentication for viewing
+const PUBLIC_PAGE_ROUTES = ["/login", "/register"];
+
+// Public API routes that don't require authentication
+const PUBLIC_API_ROUTES = ["/api/register"]; // Add other public API routes here if needed
 
 // Root paths that might need special handling if accessed directly
 const rootRedirectPaths = ["/", "/admin", "/user"];
@@ -28,18 +31,27 @@ export async function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
 
   console.log(
-    `Middleware: Path: ${pathname}, Token: ${
+    `Middleware: Path: ${pathname}, Method: ${req.method}, Token: ${
       token ? `Exists (User: ${token.email}, Role: ${token.role})` : "No Token"
     }`
   );
 
-  // Allow NextAuth API calls to pass through without further checks by this middleware
+  // Allow NextAuth API calls to pass through
   if (pathname.startsWith("/api/auth")) {
+    console.log(`Middleware: Allowing NextAuth API route: ${pathname}`);
     return NextResponse.next();
   }
 
-  // Handle public routes (e.g., /login, /register)
-  if (publicRoutes.includes(pathname)) {
+  // Allow public API routes (like /api/register) to pass through
+  if (PUBLIC_API_ROUTES.includes(pathname)) {
+    console.log(`Middleware: Allowing public API route: ${pathname}`);
+    return NextResponse.next(); // This will allow /api/register to proceed
+  }
+
+
+
+  // Handle public page routes (e.g., /login, /register pages)
+  if (PUBLIC_PAGE_ROUTES.includes(pathname)) {
     if (token && (pathname === "/login" || pathname === "/register")) {
       // If an authenticated user tries to access login/register, redirect them to their dashboard
       const redirectUrl =
@@ -47,11 +59,11 @@ export async function middleware(req: NextRequest) {
           ? new URL("/admin/dashboard", req.url)
           : new URL("/user/beranda", req.url);
       console.log(
-        `Middleware: Authenticated user on public route ${pathname}. Redirecting to ${redirectUrl.pathname}`
+        `Middleware: Authenticated user on public page route ${pathname}. Redirecting to ${redirectUrl.pathname}`
       );
       return NextResponse.redirect(redirectUrl);
     }
-    // Allow unauthenticated access to public routes, or authenticated access to other public routes (if any)
+    console.log(`Middleware: Allowing public page route: ${pathname}`);
     return NextResponse.next();
   }
 
@@ -106,16 +118,6 @@ export async function middleware(req: NextRequest) {
 
 export const config = {
   matcher: [
-    /*
-     * Match all request paths except for the ones starting with:
-     * - _next/static (static files)
-     * - _next/image (image optimization files)
-     * - favicon.ico (favicon file)
-     *
-     * This ensures middleware runs on relevant pages and NextAuth's own /api/auth routes (handled by early return),
-     * but doesn't interfere with static assets.
-     * Other API routes (e.g. /api/data) would also be matched if not excluded here or handled specifically.
-     */
     "/((?!_next/static|_next/image|favicon.ico).*)",
   ],
 };
