@@ -1,3 +1,4 @@
+export const dynamic = "force-dynamic";
 import { NextResponse } from "next/server"
 import { migrateMemberIds } from "@/lib/utils"; // Prisma import removed
 import { getServerSession } from "next-auth"

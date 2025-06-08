@@ -1,3 +1,4 @@
+export const dynamic = "force-dynamic";
 import { NextRequest, NextResponse } from 'next/server';
 import { supabase } from '@/lib/supabase'; // Replaced prisma with supabase
 import { writeFile } from 'fs/promises';

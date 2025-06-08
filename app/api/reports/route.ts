@@ -1,3 +1,4 @@
+export const dynamic = "force-dynamic";
 import { NextResponse } from "next/server"
 import { supabase } from "@/lib/supabase"; // Replaced prisma with supabase
 import { differenceInDays } from "date-fns"
