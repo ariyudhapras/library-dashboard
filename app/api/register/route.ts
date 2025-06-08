@@ -114,7 +114,7 @@ export async function POST(req: Request) {
       // Check if user already exists
       console.log("Checking if user already exists...");
       const { data: existingUser, error: fetchError } = await supabase
-        .from("user")
+        .from("users")
         .select("id")
         .eq("email", email)
         .maybeSingle();
@@ -175,7 +175,7 @@ export async function POST(req: Request) {
       const now = new Date().toISOString(); // ISO string format
 
       const { data: user, error: createError } = await supabase
-        .from("user")
+        .from("users")
         .insert({
           memberId,
           name,
