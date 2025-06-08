@@ -13,6 +13,10 @@ const PUBLIC_API_ROUTES = ["/api/register"]; // Add other public API routes here
 const rootRedirectPaths = ["/", "/admin", "/user"];
 
 export async function middleware(req: NextRequest) {
+  if (req.nextUrl.pathname.startsWith('/api/auth')) {
+    return NextResponse.next();
+  }
+
   const secret = process.env.NEXTAUTH_SECRET;
   if (!secret) {
     console.error(
@@ -116,6 +120,6 @@ export async function middleware(req: NextRequest) {
 
 export const config = {
   matcher: [
-    "/((?!api/auth|_next/static|_next/image|favicon.ico).*)",
+    "/((?!_next/static|_next/image|favicon.ico).*)",
   ],
 };
