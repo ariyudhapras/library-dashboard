@@ -62,8 +62,14 @@ export const authOptions: NextAuthOptions = {
 
           console.log("[AUTH] Login success for:", user.email);
           // Ensure user object structure is consistent, NextAuth User type expects id: number here
+          // Ensure user.id from Supabase is a number, as expected by NextAuth User type
+          const userId = typeof user.id === 'string' ? parseInt(user.id, 10) : user.id;
+          if (isNaN(userId)) {
+            console.error('[AUTH] User ID is not a valid number:', user.id);
+            return null;
+          }
           return {
-            id: user.id, // user.id from Supabase should be a number
+            id: userId,
             email: user.email,
             name: user.name,
             memberId: user.memberId,
@@ -81,10 +87,15 @@ export const authOptions: NextAuthOptions = {
   callbacks: {
     jwt: async ({ token, user }) => {
       if (user) {
-        // Ensure token.id is a number. user.id from authorize callback should be a number.
-        // If user.id is somehow a string here, attempt to parse it.
-        token.id =
-          typeof user.id === "string" ? parseInt(user.id, 10) : user.id;
+        // user.id from authorize is a number, but ensure it's treated as such for token.id
+        const userIdFromUserObject = typeof user.id === 'string' ? parseInt(user.id, 10) : user.id;
+        if (typeof userIdFromUserObject === 'number' && !isNaN(userIdFromUserObject)) {
+          token.id = userIdFromUserObject;
+        } else {
+          // Handle case where user.id might not be a valid number, though authorize should ensure it.
+          // Log an error or decide on a default if necessary, for now, we'll skip assigning if invalid.
+          console.error('[AUTH JWT Callback] user.id is not a valid number:', user.id);
+        }
         token.email = user.email;
         token.name = user.name;
         token.memberId = user.memberId;
@@ -96,8 +107,8 @@ export const authOptions: NextAuthOptions = {
       return token;
     },
     session: async ({ session, token }) => {
-      if (token) {
-        session.user.id = token.id as number; // JWT token.id is a number, session.user.id expects a number
+      if (token && typeof token.id === 'number') {
+        session.user.id = token.id; // token.id is a number
         session.user.email = token.email as string;
         session.user.name = token.name as string;
         session.user.memberId = token.memberId as string;
