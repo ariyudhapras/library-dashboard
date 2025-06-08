@@ -1,93 +1,93 @@
-"use client"
+"use client";
 
-import { useState } from "react"
-import Link from "next/link"
-import { useRouter } from "next/navigation"
-import { Eye, EyeOff, Loader2 } from "lucide-react"
-import { signIn } from "next-auth/react"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Card, CardContent, CardFooter } from "@/components/ui/card"
-import { useToast } from "@/components/ui/use-toast"
-import { Toaster } from "@/components/ui/toaster"
+import { useState } from "react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { Eye, EyeOff, Loader2 } from "lucide-react";
+import { signIn } from "next-auth/react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Card, CardContent, CardFooter } from "@/components/ui/card";
+import { useToast } from "@/components/ui/use-toast";
+import { Toaster } from "@/components/ui/toaster";
 
 interface FormData {
-  email: string
-  password: string
+  email: string;
+  password: string;
 }
 
 interface FormErrors {
-  email: string
-  password: string
+  email: string;
+  password: string;
 }
 
 export default function LoginForm() {
-  const router = useRouter()
-  const { toast } = useToast()
-  const [isLoading, setIsLoading] = useState(false)
-  const [showPassword, setShowPassword] = useState(false)
+  const router = useRouter();
+  const { toast } = useToast();
+  const [isLoading, setIsLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
   const [formData, setFormData] = useState<FormData>({
     email: "",
     password: "",
-  })
+  });
   const [errors, setErrors] = useState<FormErrors>({
     email: "",
     password: "",
-  })
+  });
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value } = e.target
+    const { name, value } = e.target;
     setFormData({
       ...formData,
       [name]: value,
-    })
+    });
     // Clear error when user types
     if (errors[name as keyof FormErrors]) {
       setErrors({
         ...errors,
         [name]: "",
-      })
+      });
     }
-  }
+  };
 
   const validateForm = () => {
     const newErrors = {
       email: "",
       password: "",
-    }
-    let isValid = true
+    };
+    let isValid = true;
 
     // Email validation
     if (!formData.email) {
-      newErrors.email = "Email harus diisi"
-      isValid = false
+      newErrors.email = "Email harus diisi";
+      isValid = false;
     } else if (!/\S+@\S+\.\S+/.test(formData.email)) {
-      newErrors.email = "Format email tidak valid"
-      isValid = false
+      newErrors.email = "Format email tidak valid";
+      isValid = false;
     }
 
     // Password validation
     if (!formData.password) {
-      newErrors.password = "Password harus diisi"
-      isValid = false
+      newErrors.password = "Password harus diisi";
+      isValid = false;
     } else if (formData.password.length < 6) {
-      newErrors.password = "Password minimal 6 karakter"
-      isValid = false
+      newErrors.password = "Password minimal 6 karakter";
+      isValid = false;
     }
 
-    setErrors(newErrors)
-    return isValid
-  }
+    setErrors(newErrors);
+    return isValid;
+  };
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault()
+    e.preventDefault();
 
     if (!validateForm()) {
-      return
+      return;
     }
 
-    setIsLoading(true)
+    setIsLoading(true);
 
     try {
       // Use NextAuth's signIn method
@@ -95,34 +95,37 @@ export default function LoginForm() {
         email: formData.email,
         password: formData.password,
         redirect: false,
-      })
+        callbackUrl: "/dashboard", // atau halaman utama kamu
+      });
 
       if (result?.error) {
         toast({
           title: "Login Gagal",
           description: "Email atau password yang Anda masukkan salah.",
           variant: "destructive",
-        })
-        setIsLoading(false)
-        return
+        });
+        setIsLoading(false);
+        return;
       }
 
       toast({
         title: "Login Berhasil",
         description: "Anda berhasil masuk ke sistem perpustakaan digital.",
-      })
+      });
 
       // Force browser reload to root which will be handled by middleware
-      window.location.replace('/');
+      if (result?.url) {
+        router.push(result.url);
+      }
     } catch (error) {
       toast({
         title: "Terjadi Kesalahan",
         description: "Gagal melakukan login. Silakan coba lagi nanti.",
         variant: "destructive",
-      })
-      setIsLoading(false)
+      });
+      setIsLoading(false);
     }
-  }
+  };
 
   return (
     <>
@@ -145,12 +148,17 @@ export default function LoginForm() {
                   className={errors.email ? "border-red-500" : ""}
                   disabled={isLoading}
                 />
-                {errors.email && <p className="text-sm text-red-500">{errors.email}</p>}
+                {errors.email && (
+                  <p className="text-sm text-red-500">{errors.email}</p>
+                )}
               </div>
               <div className="grid gap-2">
                 <div className="flex items-center justify-between">
                   <Label htmlFor="password">Password</Label>
-                  <Link href="#" className="text-sm font-medium text-primary underline-offset-4 hover:underline">
+                  <Link
+                    href="#"
+                    className="text-sm font-medium text-primary underline-offset-4 hover:underline"
+                  >
                     Lupa password?
                   </Link>
                 </div>
@@ -164,7 +172,9 @@ export default function LoginForm() {
                     autoComplete="current-password"
                     value={formData.password}
                     onChange={handleInputChange}
-                    className={errors.password ? "border-red-500 pr-10" : "pr-10"}
+                    className={
+                      errors.password ? "border-red-500 pr-10" : "pr-10"
+                    }
                     disabled={isLoading}
                   />
                   <button
@@ -176,7 +186,9 @@ export default function LoginForm() {
                     {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
                   </button>
                 </div>
-                {errors.password && <p className="text-sm text-red-500">{errors.password}</p>}
+                {errors.password && (
+                  <p className="text-sm text-red-500">{errors.password}</p>
+                )}
               </div>
             </div>
           </CardContent>
@@ -196,11 +208,14 @@ export default function LoginForm() {
       </Card>
       <div className="mt-4 text-center text-sm">
         Belum punya akun?{" "}
-        <Link href="/register" className="font-medium text-primary underline-offset-4 hover:underline">
+        <Link
+          href="/register"
+          className="font-medium text-primary underline-offset-4 hover:underline"
+        >
           Daftar di sini
         </Link>
       </div>
       <Toaster />
     </>
-  )
+  );
 }
