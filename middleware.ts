@@ -1,5 +1,3 @@
-export const dynamic = "force-dynamic";
-
 // /Users/itpolaris/AriYudhaPrasetyo/library-dashboard/middleware.ts
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
